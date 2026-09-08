@@ -15,7 +15,7 @@ on:
 
 jobs:
     # Qt 5 entries are compatibility checks only. Official release artifacts
-    # are built by release.yml with the patched Qt 6.11.2 toolchain.
+    # are built by release.yml with the Qt 6.10.2 toolchain.
     # Build job for Ubuntu
     build-ubuntu:
         strategy:
@@ -89,7 +89,7 @@ jobs:
                       experimental: false
                     - name: WinServer2022 MinGW QT6
                       image: windows-2022
-                      qt-version: "6.11.2"
+                      qt-version: "6.10.2"
                       shell: msys2 {0}
                       cmake-args: -G Ninja
                       build-type: Debug
@@ -105,7 +105,7 @@ jobs:
                       experimental: false
                     - name: WinServer2022 MSVC QT6
                       image: windows-2022
-                      qt-version: "6.11.2"
+                      qt-version: "6.10.2"
                       shell: cmd
                       cmake-args: -G "Visual Studio 17 2022" "-DSDL2_PATH=%WORKSPACE_DIR%/sdl2/" "-DSDL2_LIBRARY=%WORKSPACE_DIR%/sdl2/lib/x64/SDL2.lib" "-DSDL2_INCLUDE_DIR=%WORKSPACE_DIR%/sdl2/" "-DSDL2_DLL_LOCATION_DIR=%WORKSPACE_DIR%/sdl2/lib/x64/SDL2.dll"
                       build-type: Debug
@@ -175,4 +175,4 @@ jobs:
               run: cmake --build "${{ github.workspace }}/build" --parallel 8
 
             - name: Run focused security and crash logging tests
-              run: ctest --test-dir "${{ github.workspace }}/build" --output-on-failure -R "SecurityPolicyTests|CrashLoggingTests"
+              run: ctest --test-dir "${{ github.workspace }}/build" -C "${{ matrix.build-type }}" --output-on-failure -R "SecurityPolicyTests|CrashLoggingTests"
