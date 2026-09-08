@@ -70,8 +70,8 @@ jobs:
             - name: Build AntiMicroX
               run: cmake --build ${{ github.workspace }}/build
 
-            - name: Run security policy tests
-              run: ctest --test-dir ${{ github.workspace }}/build --output-on-failure -R SecurityPolicyTests
+            - name: Run focused security and crash logging tests
+              run: ctest --test-dir ${{ github.workspace }}/build --output-on-failure -R "SecurityPolicyTests|CrashLoggingTests"
 
     # Build job for Windows
     build-windows:
@@ -174,5 +174,5 @@ jobs:
             - name: Build
               run: cmake --build "${{ github.workspace }}/build" --parallel 8
 
-            - name: Run security policy tests
-              run: ctest --test-dir "${{ github.workspace }}/build" --output-on-failure -R SecurityPolicyTests
+            - name: Run focused security and crash logging tests
+              run: ctest --test-dir "${{ github.workspace }}/build" --output-on-failure -R "SecurityPolicyTests|CrashLoggingTests"

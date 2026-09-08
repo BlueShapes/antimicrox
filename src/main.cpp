@@ -55,6 +55,7 @@
 #include <stdexcept>
 
 #ifdef Q_OS_WIN
+    #include "windowscrashhandler.h"
     #include <windows.h>
 #endif
 
@@ -244,6 +245,10 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
+#ifdef Q_OS_WIN
+    const bool crashHandlerInstalled = WindowsCrashHandler::install();
+#endif
+
     qInstallMessageHandler(Logger::loggerMessageHandler);
 
     QApplication antimicrox(argc, argv);
@@ -252,6 +257,11 @@ int main(int argc, char *argv[])
 
     QTextStream outstream(stdout);
     Logger *appLogger = Logger::createInstance(&outstream, Logger::LogLevel::LOG_WARNING);
+
+#ifdef Q_OS_WIN
+    if (!crashHandlerInstalled)
+        qWarning() << "Crash dump generation could not be initialized.";
+#endif
 
     qRegisterMetaType<JoyButtonSlot *>();
     qRegisterMetaType<SetJoystick *>();
@@ -437,17 +447,6 @@ int main(int argc, char *argv[])
 
     QIcon::setThemeSearchPaths(themePathsTries);
     qDebug() << "Theme name: " << QIcon::themeName();
-
-    // Update log info based on config values
-    if (cmdutility.getCurrentLogLevel() == Logger::LOG_NONE && settings.contains("LogLevel"))
-    {
-        appLogger->setLogLevel(static_cast<Logger::LogLevel>(settings.value("LogLevel").toInt()));
-    }
-
-    if (cmdutility.getCurrentLogFile().isEmpty() && settings.contains("LogFile"))
-    {
-        appLogger->setCurrentLogFile(settings.value("LogFile").toString());
-    }
 
     QString targetLang = QLocale::system().name();
 

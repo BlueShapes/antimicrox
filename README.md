@@ -127,6 +127,12 @@ under the GNU General Public License version 3. See [LICENSE](LICENSE) for detai
 
 Just download `antimicrox-X.X.X-AMD64.exe` from [Release site](https://github.com/AntiMicroX/antimicrox/releases/latest) and install it.
 
+If AntiMicroX terminates because of an unhandled Windows exception, a diagnostic
+minidump is saved under `%LOCALAPPDATA%\antimicrox\crashes` (or `crashes` beside
+the portable executable). At most five AntiMicroX dumps are retained. Minidumps
+can contain paths, stack data, and fragments of in-memory input, so inspect them
+before sharing them publicly.
+
 ### Flatpak
 
 The flatpak version is distributed on Flathub, and runs on most major Linux distributions. See instructions here: [Flathub application page](https://flathub.org/apps/details/io.github.antimicrox.antimicrox)

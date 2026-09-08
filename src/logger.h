@@ -23,9 +23,10 @@
 #include <QFile>
 #include <QMutex>
 #include <QObject>
+#include <QReadWriteLock>
 #include <QTextStream>
-#include <QThread>
 
+#include <memory>
 #include <sstream>
 
 /**
@@ -77,13 +78,16 @@ class Logger : public QObject
 
     static void setLogLevel(LogLevel level);
     LogLevel getCurrentLogLevel();
+    static LogLevel currentLogLevel();
     static bool isDebugEnabled();
 
     static void setCurrentStream(QTextStream *stream);
     static void setCurrentLogFile(QString filename);
     static QString getCurrentLogFile();
     bool isWritingToFile();
+    static bool isFileLoggingEnabled();
     static QTextStream *getCurrentStream();
+    static void submitMessage(const QString &message, LogLevel level, uint lineno, const QString &filename);
 
     /**
      * @brief Get the Instance of logger
@@ -107,14 +111,14 @@ class Logger : public QObject
     void closeLogger(bool closeStream = true);
 
     static Logger *instance;
+    static QReadWriteLock instanceLock;
 
-    QFile outputFile;
+    std::unique_ptr<QFile> outputFile;
     QTextStream outFileStream;
     QTextStream *outputStream;
 
     LogLevel outputLevel;
     QMutex logMutex;
-    QThread *loggingThread; // in this thread all of writing operations will be executed
 
   public slots:
     void logMessage(const QString &message, const Logger::LogLevel level, const uint lineno, const QString &filename);
@@ -125,9 +129,8 @@ class Logger : public QObject
  *
  * Message is sent either by using sendMessage(), or during destruction.
  */
-class LogHelper : public QObject
+class LogHelper
 {
-    Q_OBJECT
   public:
     QString message;
     Logger::LogLevel level;
@@ -143,9 +146,7 @@ class LogHelper : public QObject
         , filename(filename)
         , is_message_sent(false)
     {
-        Logger *pointer = Logger::getInstance();
-        log_level = pointer->getCurrentLogLevel();
-        connect(this, &LogHelper::logMessage, pointer, &Logger::logMessage);
+        log_level = Logger::currentLogLevel();
     };
 
     ~LogHelper()
@@ -157,7 +158,7 @@ class LogHelper : public QObject
     void sendMessage()
     {
         is_message_sent = true;
-        emit logMessage(message, level, lineno, filename);
+        Logger::submitMessage(message, level, lineno, filename);
     };
 
     LogHelper &operator<<(const QString &s)
@@ -177,8 +178,6 @@ class LogHelper : public QObject
         }
         return *this;
     }
-  signals:
-    void logMessage(const QString &message, const Logger::LogLevel level, const uint lineno, const QString &filename);
 };
 
 /**
@@ -219,7 +218,7 @@ class StreamPrinter : public QObject
     {
         // When logger prints to stream, then we already have printed messages into console,
         // there is no need to duplicate
-        if (Logger::getInstance()->isWritingToFile())
+        if (Logger::isFileLoggingEnabled())
             LogHelper(Logger::LogLevel::LOG_INFO, m_lineno, m_filename, QString(m_message.str().c_str())).sendMessage();
     };
 

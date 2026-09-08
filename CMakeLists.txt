@@ -491,6 +491,7 @@ elseif(WIN32)
         src/autoprofilewatcher.cpp
         src/winextras.cpp
         src/windowstokenelevation.cpp
+        src/windowscrashhandler.cpp
          src/qtwinkeymapper.cpp
          src/gui/winappprofiletimerdialog.cpp
          src/gui/capturedwindowinfodialog.cpp
@@ -501,6 +502,7 @@ elseif(WIN32)
         src/autoprofilewatcher.h
         src/winextras.h
         src/windowstokenelevation.h
+        src/windowscrashhandler.h
         src/qtwinkeymapper.h
         src/gui/winappprofiletimerdialog.h
         src/gui/capturedwindowinfodialog.h
@@ -616,7 +618,7 @@ if(UNIX)
 #        set(SDL2_LIBRARIES SDL2::SDL2)
 #    endif()
 elseif (WIN32)
-    list(APPEND WIN_LIBS "psapi")
+    list(APPEND WIN_LIBS "psapi" "dbghelp")
 endif(UNIX)
 
 
@@ -844,6 +846,7 @@ file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/CHANGELOG.md DESTINATION ${CMAKE_CURRENT_S
 
 if(BUILD_TESTING)
     add_subdirectory(tests/securitypolicy)
+    add_subdirectory(tests/crashlogging)
 endif(BUILD_TESTING)
 
 if(WITH_TESTS)

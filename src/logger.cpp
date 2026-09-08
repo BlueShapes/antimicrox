@@ -21,153 +21,190 @@
 
 #include "applicationsecuritypolicy.h"
 
+#if defined(Q_OS_WIN)
+    #include "windowscrashhandler.h"
+#endif
+
 #include <QDebug>
-#include <QMetaObject>
+#include <QFileInfo>
+#include <QSaveFile>
 #include <QTime>
 
-// only for QT 6
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
     #include <QStringConverter>
 #endif
-#include <chrono>
-#include <thread>
 
 Logger *Logger::instance = nullptr;
+QReadWriteLock Logger::instanceLock;
 
-/**
- * @brief Outputs log messages to a given text stream. Client code
- *     should determine whether it points to a console stream or
- *     to a file.
- * @param stream used to output text
- * @param output_lvl Messages based of a given output level or lower will be logged
- * @param parent object
- */
+namespace
+{
+constexpr qint64 maximumLogBytes = 8LL * 1024LL * 1024LL;
+
+bool isUtf8ContinuationByte(char value)
+{
+    return (static_cast<unsigned char>(value) & 0xc0U) == 0x80U;
+}
+
+bool retainRecentLogContents(const QString &filename)
+{
+    QFile source(filename);
+    if (!source.exists() || source.size() <= maximumLogBytes || !source.open(QIODevice::ReadOnly))
+        return true;
+
+    if (!source.seek(source.size() - maximumLogBytes))
+        return false;
+
+    QByteArray recentContents = source.read(maximumLogBytes);
+    if (recentContents.isEmpty() && source.size() != 0)
+        return false;
+    source.close();
+
+    const qsizetype firstNewline = recentContents.indexOf('\n');
+    if (firstNewline >= 0 && firstNewline + 1 < recentContents.size())
+    {
+        recentContents.remove(0, firstNewline + 1);
+    }
+    else
+    {
+        qsizetype firstCharacter = 0;
+        while (firstCharacter < recentContents.size() && isUtf8ContinuationByte(recentContents.at(firstCharacter)))
+            ++firstCharacter;
+        recentContents.remove(0, firstCharacter);
+    }
+
+    QSaveFile replacement(filename);
+    if (!replacement.open(QIODevice::WriteOnly))
+        return false;
+    if (replacement.write(recentContents) != recentContents.size())
+        return false;
+    return replacement.commit();
+}
+
+bool refersToSameFile(const QString &first, const QString &second)
+{
+    return QFileInfo(first).absoluteFilePath() == QFileInfo(second).absoluteFilePath();
+}
+} // namespace
+
 Logger::Logger(QTextStream *stream, LogLevel output_lvl, QObject *parent)
     : QObject(parent)
+    , outputFile(std::make_unique<QFile>())
+    , outputStream(stream)
+    , outputLevel(output_lvl)
 {
-    // needed to allow sending LogLevel using signals and slots
-    qRegisterMetaType<Logger::LogLevel>("Logger::LogLevel");
-    loggingThread = new QThread(this);
-    loggingThread->setObjectName("loggingThread");
-    outputStream = stream;
-    outputLevel = output_lvl;
-
-    this->moveToThread(loggingThread);
-    loggingThread->start();
 }
 
-/**
- * @brief Close output stream and set instance to 0.
- */
 Logger::~Logger()
 {
-    VERBOSE() << "Closing logger";
-    // To be sure about proper processing logs before deleting logger
-    std::this_thread::sleep_for(std::chrono::milliseconds(30));
-    loggingThread->quit();
-    loggingThread->wait();
+    QWriteLocker lifecycleLocker(&instanceLock);
+    if (instance == this)
+        instance = nullptr;
     closeLogger();
-    instance = nullptr;
 }
 
-/**
- * @brief Set the highest logging level. Determines which messages
- *     are output to the output stream.
- * @param level Highest log level utilized.
- */
 void Logger::setLogLevel(LogLevel level)
 {
-    Q_ASSERT(instance != nullptr);
-
-    QMutexLocker locker(&instance->logMutex);
-    Q_UNUSED(locker);
-
-    instance->outputLevel = level;
+    QReadLocker lifecycleLocker(&instanceLock);
+    Logger *current = instance;
+    Q_ASSERT(current != nullptr);
+    if (current == nullptr)
+        return;
+    QMutexLocker locker(&current->logMutex);
+    current->outputLevel = level;
 }
 
-/**
- * @brief Get the current output level associated with the logger.
- * @return Current output level
- */
 Logger::LogLevel Logger::getCurrentLogLevel()
 {
-    Q_ASSERT(instance != nullptr);
-    return instance->outputLevel;
+    QMutexLocker locker(&logMutex);
+    return outputLevel;
+}
+
+Logger::LogLevel Logger::currentLogLevel()
+{
+    QReadLocker lifecycleLocker(&instanceLock);
+    if (instance == nullptr)
+        return LOG_NONE;
+    return instance->getCurrentLogLevel();
 }
 
 void Logger::setCurrentStream(QTextStream *stream)
 {
-    Q_ASSERT(instance != nullptr);
-
-    QMutexLocker locker(&instance->logMutex);
-    Q_UNUSED(locker);
-
-    instance->outputStream->flush();
-    instance->outputStream = stream;
+    QReadLocker lifecycleLocker(&instanceLock);
+    Logger *current = instance;
+    Q_ASSERT(current != nullptr);
+    if (current == nullptr)
+        return;
+    QMutexLocker locker(&current->logMutex);
+    if (current->outputStream != nullptr)
+        current->outputStream->flush();
+    current->outputStream = stream;
 }
 
 QTextStream *Logger::getCurrentStream()
 {
-    Q_ASSERT(instance != nullptr);
-
-    return instance->outputStream;
+    QReadLocker lifecycleLocker(&instanceLock);
+    Logger *current = instance;
+    Q_ASSERT(current != nullptr);
+    if (current == nullptr)
+        return nullptr;
+    QMutexLocker locker(&current->logMutex);
+    return current->outputStream;
 }
 
-/**
- * @brief Flushes output stream and closes stream if requested.
- * @param closeStream Whether to close the current stream. Defaults to true.
- */
+void Logger::submitMessage(const QString &message, LogLevel level, uint lineno, const QString &filename)
+{
+    QReadLocker lifecycleLocker(&instanceLock);
+    if (instance != nullptr)
+        instance->logMessage(message, level, lineno, filename);
+}
+
 void Logger::closeLogger(bool closeStream)
 {
+    QMutexLocker locker(&logMutex);
     if (outputStream != nullptr)
-    {
         outputStream->flush();
-
-        if (closeStream && (outputStream->device() != nullptr))
-        {
-            QIODevice *device = outputStream->device();
-            if (device->isOpen())
-            {
-                device->close();
-            }
-        }
-    }
+    if (closeStream && outputFile != nullptr && outputFile->isOpen())
+        outputFile->close();
 }
 
-/**
- * @brief Write an individual message to the text stream.
- *
- * This socket method is executed in separate logging thread
- */
 void Logger::logMessage(const QString &message, const Logger::LogLevel level, const uint lineno, const QString &filename)
 {
-    const static QMap<Logger::LogLevel, QString> TYPE_NAMES = {
+    const static QMap<Logger::LogLevel, QString> typeNames = {
         {LogLevel::LOG_DEBUG, "🐞DEBUG"},  {LogLevel::LOG_VERBOSE, "⚪VERBOSE"}, {LogLevel::LOG_INFO, "🟢INFO"},
         {LogLevel::LOG_WARNING, "❗WARN"}, {LogLevel::LOG_ERROR, "❌ERROR"},     {LogLevel::LOG_NONE, "NONE"}};
-    QString displayTime = QString("[%1] ").arg(QTime::currentTime().toString("hh:mm:ss.zzz"));
-    if ((outputLevel != LOG_NONE) && (level <= outputLevel))
+
+    QMutexLocker locker(&logMutex);
+    if (outputStream == nullptr || outputLevel == LOG_NONE || level > outputLevel)
+        return;
+
+    const bool extendedLogs = outputLevel == LOG_DEBUG;
+    if (extendedLogs)
+        *outputStream << QString("[%1] ").arg(QTime::currentTime().toString("hh:mm:ss.zzz"));
+
+    QString finalMessage = message;
+    finalMessage.replace("\n", "\n\t\t\t");
+    *outputStream << typeNames[level] << "\t" << finalMessage;
+
+    if (extendedLogs)
     {
-        bool extendedLogs = (outputLevel == LOG_DEBUG);
-        if (extendedLogs)
-            *outputStream << displayTime;
+        static int filenameOffset = -1;
+        if (filenameOffset < 0)
+            filenameOffset = filename.lastIndexOf("/src/");
+        if (lineno != 0)
+            *outputStream << " (file " << filename.mid(filenameOffset) << ":" << lineno << ")";
+    }
 
-        QString finalMessage = message;
-        finalMessage = finalMessage.replace("\n", "\n\t\t\t");
-        *outputStream << TYPE_NAMES[level] << "\t" << finalMessage;
+    *outputStream << "\n";
+    outputStream->flush();
 
-        if (extendedLogs)
-        {
-            static int filename_offset = -1;
-            if (filename_offset < 0)
-            {
-                filename_offset = filename.lastIndexOf("/src/");
-            }
-            if (lineno != 0)
-                *outputStream << " (file " << filename.mid(filename_offset) << ":" << lineno << ")";
-        }
-
-        *outputStream << "\n";
-        outputStream->flush();
+    if (outputFile != nullptr && outputStream == &outFileStream && outputFile->size() > maximumLogBytes)
+    {
+        outputFile->close();
+        retainRecentLogContents(outputFile->fileName());
+        const bool reopened = outputFile->open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text);
+        if (!reopened)
+            outputStream = nullptr;
     }
 }
 
@@ -175,110 +212,134 @@ void Logger::setCurrentLogFile(QString filename)
 {
     if (filename.isEmpty())
         return;
-    Q_ASSERT(instance != nullptr);
-
     if (!ApplicationSecurityPolicy::current().allowsUserControlledLogFile())
     {
         qWarning() << "File logging is disabled while AntiMicroX is running elevated.";
         return;
     }
 
-    if (instance->outputFile.isOpen())
+    bool openFailed = false;
     {
-        instance->closeLogger(true);
-    }
-    instance->outputFile.setFileName(filename);
-    if (!instance->outputFile.open(QIODevice::WriteOnly))
-    {
-        qCritical() << "Couldn't open log file: " << filename;
-        return;
-    }
-    instance->outFileStream.setDevice(&instance->outputFile);
+        QReadLocker lifecycleLocker(&instanceLock);
+        Logger *current = instance;
+        Q_ASSERT(current != nullptr);
+        if (current == nullptr)
+            return;
+
+        QMutexLocker locker(&current->logMutex);
+        if (current->outputFile != nullptr && current->outputFile->isOpen()
+            && refersToSameFile(current->outputFile->fileName(), filename))
+        {
+            return;
+        }
+
+        const bool retentionSucceeded = retainRecentLogContents(filename);
+
+        std::unique_ptr<QFile> replacement = std::make_unique<QFile>(filename);
+        if (!retentionSucceeded || !replacement->open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text))
+        {
+            openFailed = true;
+        }
+        else
+        {
+            current->outFileStream.flush();
+            if (current->outputFile != nullptr && current->outputFile->isOpen())
+                current->outputFile->close();
+
+            current->outputFile = std::move(replacement);
+            current->outFileStream.setDevice(current->outputFile.get());
 #if defined(Q_OS_WIN)
     #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-    instance->outFileStream.setEncoding(QStringConverter::Utf8);
+            current->outFileStream.setEncoding(QStringConverter::Utf8);
     #else
-    instance->outFileStream.setCodec("UTF-8"); // to properly print special characters in files
+            current->outFileStream.setCodec("UTF-8");
     #endif
 #endif
-    instance->setCurrentStream(&instance->outFileStream);
-}
-
-bool Logger::isWritingToFile() { return outputFile.isOpen(); }
-
-/**
- * @brief log message handling function
- *
- * It is meant to be registered via qInstallMessageHandler() at the beginning of application
- *
- * @param type
- * @param context
- * @param msg
- */
-void Logger::loggerMessageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg)
-{
-    if (Logger::instance != nullptr)
-    {
-        Logger::LogLevel level = Logger::instance->getCurrentLogLevel();
-        if (level == LogLevel::LOG_NONE)
-            return;
-        switch (type)
-        {
-        case QtDebugMsg:
-            if (level >= Logger::LOG_DEBUG || level == Logger::LOG_MAX)
-                LogHelper(LogLevel::LOG_DEBUG, context.line, context.file, msg);
-            break;
-        case QtInfoMsg:
-            if (level >= Logger::LOG_INFO)
-                LogHelper(LogLevel::LOG_INFO, context.line, context.file, msg);
-            break;
-        case QtWarningMsg:
-            if (level >= Logger::LOG_WARNING)
-                LogHelper(LogLevel::LOG_WARNING, context.line, context.file, msg);
-            break;
-        case QtCriticalMsg:
-            if (level >= Logger::LOG_ERROR)
-                LogHelper(LogLevel::LOG_ERROR, context.line, context.file, msg);
-            break;
-        case QtFatalMsg:
-            if (level >= Logger::LOG_ERROR)
-                LogHelper(LogLevel::LOG_ERROR, context.line, context.file, msg);
-            abort();
-        default:
-            break;
+            current->outputStream = &current->outFileStream;
         }
     }
+
+    if (openFailed)
+        qCritical() << "Couldn't open log file: " << filename;
 }
 
-/**
- * @brief Create instance of logger, if there is any other instance it will de deleted
- *
- * @return Logger* - pointer to newly created instance
- */
+bool Logger::isWritingToFile()
+{
+    QMutexLocker locker(&logMutex);
+    return outputFile != nullptr && outputFile->isOpen();
+}
+
+bool Logger::isFileLoggingEnabled()
+{
+    QReadLocker lifecycleLocker(&instanceLock);
+    return instance != nullptr && instance->isWritingToFile();
+}
+
+void Logger::loggerMessageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg)
+{
+    const Logger::LogLevel level = Logger::currentLogLevel();
+
+    switch (type)
+    {
+    case QtDebugMsg:
+        if (level >= Logger::LOG_DEBUG || level == Logger::LOG_MAX)
+            LogHelper(LogLevel::LOG_DEBUG, context.line, context.file, msg);
+        break;
+    case QtInfoMsg:
+        if (level >= Logger::LOG_INFO)
+            LogHelper(LogLevel::LOG_INFO, context.line, context.file, msg);
+        break;
+    case QtWarningMsg:
+        if (level >= Logger::LOG_WARNING)
+            LogHelper(LogLevel::LOG_WARNING, context.line, context.file, msg);
+        break;
+    case QtCriticalMsg:
+        if (level >= Logger::LOG_ERROR)
+            LogHelper(LogLevel::LOG_ERROR, context.line, context.file, msg);
+        break;
+    case QtFatalMsg:
+        if (level >= Logger::LOG_ERROR)
+            LogHelper(LogLevel::LOG_ERROR, context.line, context.file, msg);
+#if defined(Q_OS_WIN)
+        WindowsCrashHandler::writeDump();
+#endif
+        abort();
+    default:
+        break;
+    }
+}
+
 Logger *Logger::createInstance(QTextStream *stream, LogLevel outputLevel, QObject *parent)
 {
-    if (instance != nullptr)
+    Logger *replacement = new Logger(stream, outputLevel, parent);
+    Logger *previous = nullptr;
     {
-        delete instance;
+        QWriteLocker lifecycleLocker(&instanceLock);
+        previous = instance;
+        instance = replacement;
     }
-    instance = new Logger(stream, outputLevel, parent);
-    return instance;
+    delete previous;
+    return replacement;
 }
 
 bool Logger::isDebugEnabled()
 {
-    if (instance != nullptr)
-    {
-        return instance->outputLevel == LogLevel::LOG_DEBUG;
-    }
-    return false;
+    QReadLocker lifecycleLocker(&instanceLock);
+    if (instance == nullptr)
+        return false;
+    QMutexLocker locker(&instance->logMutex);
+    return instance->outputLevel == LogLevel::LOG_DEBUG;
 }
 
 QString Logger::getCurrentLogFile()
 {
-    Q_ASSERT(instance != nullptr);
-    if (instance->outputFile.exists())
-        return instance->outputFile.fileName();
-    else
+    QReadLocker lifecycleLocker(&instanceLock);
+    Logger *current = instance;
+    Q_ASSERT(current != nullptr);
+    if (current == nullptr)
         return "";
+    QMutexLocker locker(&current->logMutex);
+    if (current->outputFile != nullptr && current->outputFile->isOpen())
+        return current->outputFile->fileName();
+    return "";
 }
