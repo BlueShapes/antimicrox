@@ -152,7 +152,7 @@ jobs:
                   version: "6.10.2"
                   host: "linux"
                   target: "desktop"
-                  arch: "gcc_64"
+                  arch: "linux_gcc_64"
                   modules: "qt5compat"
                   install-deps: "true"
 
@@ -286,6 +286,12 @@ jobs:
             # Do not publish a Portable Windows archive: DLL search and
             # loading occur before application startup policy can run.
             - name: Upload installer to release
-              run: gh release upload "$RELEASE_TAG" ./build/antimicrox*.exe --clobber
+              shell: pwsh
+              run: |
+                  $installer = @(Get-ChildItem -Path "${{ github.workspace }}/build" -Filter "antimicrox*.exe" -File)
+                  if ($installer.Count -ne 1) {
+                      throw "Expected exactly one Windows installer, found $($installer.Count)."
+                  }
+                  gh release upload $env:RELEASE_TAG $installer[0].FullName --clobber
               env:
                   GH_TOKEN: ${{ github.token }}
