@@ -277,6 +277,13 @@ bool Logger::isFileLoggingEnabled()
 
 void Logger::loggerMessageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg)
 {
+#if defined(Q_OS_WIN)
+    // A fatal path must not wait for the ordinary logger. Another thread may
+    // already hold its lock while blocked in console or file I/O.
+    if (type == QtFatalMsg)
+        WindowsCrashHandler::terminateWithDump();
+#endif
+
     const Logger::LogLevel level = Logger::currentLogLevel();
 
     switch (type)
@@ -301,9 +308,10 @@ void Logger::loggerMessageHandler(QtMsgType type, const QMessageLogContext &cont
         if (level >= Logger::LOG_ERROR)
             LogHelper(LogLevel::LOG_ERROR, context.line, context.file, msg);
 #if defined(Q_OS_WIN)
-        WindowsCrashHandler::writeDump();
-#endif
+        WindowsCrashHandler::terminateWithDump();
+#else
         abort();
+#endif
     default:
         break;
     }

@@ -4,6 +4,7 @@
 #include <QCoreApplication>
 #include <QDir>
 #include <QFile>
+#include <QIODevice>
 #include <QMetaObject>
 #include <QProcess>
 #include <QSemaphore>
@@ -28,6 +29,23 @@ namespace
 {
 constexpr qint64 maximumLogBytes = 8LL * 1024LL * 1024LL;
 int failures = 0;
+
+class BlockingLogDevice final : public QIODevice
+{
+  public:
+    BlockingLogDevice() { open(QIODevice::WriteOnly); }
+
+    QSemaphore writeStarted;
+
+  protected:
+    qint64 readData(char *, qint64) override { return -1; }
+    qint64 writeData(const char *, qint64 size) override
+    {
+        writeStarted.release();
+        QThread::msleep(30000);
+        return size;
+    }
+};
 
 void expect(bool condition, const char *message)
 {
@@ -168,6 +186,27 @@ void testActiveLogRemainsBounded()
     std::abort();
 }
 
+[[noreturn]] void runFatalDumpUnderContentionChild(const QString &dumpDirectory)
+{
+    SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX | SEM_NOOPENFILEERRORBOX);
+    const std::wstring nativeDirectory = dumpDirectory.toStdWString();
+    if (!WindowsCrashHandler::install(nativeDirectory.c_str()))
+        std::_Exit(87);
+
+    BlockingLogDevice blockingDevice;
+    QTextStream console(&blockingDevice);
+    Logger::createInstance(&console, Logger::LOG_DEBUG);
+    qInstallMessageHandler(Logger::loggerMessageHandler);
+
+    std::thread blockedLogger([] { INFO() << "BLOCK_LOGGER_BEFORE_FATAL"; });
+    if (!blockingDevice.writeStarted.tryAcquire(1, 2000))
+        std::_Exit(89);
+
+    qFatal("FATAL_DUMP_UNDER_CONTENTION_TEST");
+    blockedLogger.join();
+    std::abort();
+}
+
 void testUnhandledWindowsExceptionCreatesMinidump()
 {
     QTemporaryDir directory;
@@ -218,8 +257,44 @@ void testFatalMessageCreatesMinidump()
     expect(child.exitCode() != 0 || child.exitStatus() == QProcess::CrashExit, "the fatal-dump probe ends abnormally");
 
     QDir dumpDir(directory.path());
-    expect(dumpDir.entryList({QStringLiteral("*.dmp")}, QDir::Files).size() == 1,
-           "one minidump is created for a Qt fatal message");
+    const QStringList dumps = dumpDir.entryList({QStringLiteral("*.dmp")}, QDir::Files);
+    expect(dumps.size() == 1, "one minidump is created for a Qt fatal message");
+    if (dumps.size() == 1)
+    {
+        QFile dump(dumpDir.filePath(dumps.constFirst()));
+        expect(dump.open(QIODevice::ReadOnly), "the Qt fatal minidump can be read");
+        expect(dump.read(4) == QByteArrayLiteral("MDMP"), "the Qt fatal file has the minidump signature");
+    }
+}
+
+void testFatalMessageBypassesLoggerContention()
+{
+    QTemporaryDir directory;
+    expect(directory.isValid(), "a temporary contended fatal-dump directory can be created");
+
+    QProcess child;
+    child.start(QCoreApplication::applicationFilePath(),
+                {QStringLiteral("--fatal-dump-contention-child"), directory.path()});
+    expect(child.waitForStarted(5000), "the contended fatal-dump probe starts");
+    const bool finished = child.waitForFinished(5000);
+    expect(finished, "the fatal-dump probe terminates even while ordinary logging is blocked");
+    if (!finished)
+    {
+        child.kill();
+        child.waitForFinished(5000);
+    }
+
+    QDir dumpDir(directory.path());
+    const QStringList dumps = dumpDir.entryList({QStringLiteral("*.dmp")}, QDir::Files);
+    expect(dumps.size() == 1, "a contended Qt fatal message still creates one minidump");
+    if (dumps.size() == 1)
+    {
+        QFile dump(dumpDir.filePath(dumps.constFirst()));
+        expect(dump.open(QIODevice::ReadOnly), "the contended Qt fatal minidump can be read");
+        expect(dump.size() > 4, "the contended Qt fatal minidump is non-empty");
+        expect(dump.read(4) == QByteArrayLiteral("MDMP"),
+               "the contended Qt fatal file has the minidump signature");
+    }
 }
 
 void testCrashDumpRetentionIsBounded()
@@ -306,6 +381,11 @@ int main(int argc, char *argv[])
         runMinidumpChild(application.arguments().at(2));
     if (application.arguments().size() == 3 && application.arguments().at(1) == QStringLiteral("--fatal-dump-child"))
         runFatalDumpChild(application.arguments().at(2));
+    if (application.arguments().size() == 3
+        && application.arguments().at(1) == QStringLiteral("--fatal-dump-contention-child"))
+    {
+        runFatalDumpUnderContentionChild(application.arguments().at(2));
+    }
 #endif
 
     testOpeningLogPreservesExistingContents();
@@ -316,6 +396,7 @@ int main(int argc, char *argv[])
 #ifdef Q_OS_WIN
     testUnhandledWindowsExceptionCreatesMinidump();
     testFatalMessageCreatesMinidump();
+    testFatalMessageBypassesLoggerContention();
     testCrashDumpRetentionIsBounded();
 #endif
 

@@ -228,14 +228,14 @@ LONG WINAPI unhandledExceptionFilter(EXCEPTION_POINTERS *exceptionPointers) noex
     return writeMiniDump(exceptionPointers) ? EXCEPTION_EXECUTE_HANDLER : EXCEPTION_CONTINUE_SEARCH;
 }
 
-[[noreturn]] void terminateAfterDump() noexcept
+} // namespace
+
+[[noreturn]] void WindowsCrashHandler::terminateWithDump() noexcept
 {
     writeMiniDump(nullptr);
     TerminateProcess(GetCurrentProcess(), 3);
     ExitProcess(3);
 }
-
-} // namespace
 
 bool WindowsCrashHandler::install(const wchar_t *directoryOverride) noexcept
 {
@@ -250,7 +250,7 @@ bool WindowsCrashHandler::install(const wchar_t *directoryOverride) noexcept
 
     InterlockedExchange(&dumpInProgress, 0);
     SetUnhandledExceptionFilter(&unhandledExceptionFilter);
-    std::set_terminate(&terminateAfterDump);
+    std::set_terminate(&WindowsCrashHandler::terminateWithDump);
     return true;
 }
 
