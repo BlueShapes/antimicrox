@@ -19,6 +19,7 @@
 #include "antimicrosettings.h"
 #include "antkeymapper.h"
 #include "applaunchhelper.h"
+#include "applicationsecuritypolicy.h"
 #include "autoprofileinfo.h"
 #include "commandlineutility.h"
 #include "common.h"
@@ -232,6 +233,14 @@ int main(int argc, char *argv[])
     QApplication antimicrox(argc, argv);
     QCoreApplication::setApplicationName("antimicrox");
     QCoreApplication::setApplicationVersion(PadderCommon::programVersion);
+
+    if (ApplicationSecurityPolicy::current().mustRefuseStartup())
+    {
+        QMessageBox::critical(nullptr, QObject::tr("Unsafe elevated portable build"),
+                              QObject::tr("The portable build cannot run as Administrator. Install AntiMicroX in a "
+                                          "protected location before using elevated mode."));
+        return EXIT_FAILURE;
+    }
 
     QTextStream outstream(stdout);
     Logger *appLogger = Logger::createInstance(&outstream, Logger::LogLevel::LOG_WARNING);

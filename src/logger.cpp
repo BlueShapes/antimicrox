@@ -19,6 +19,8 @@
 
 #include "logger.h"
 
+#include "applicationsecuritypolicy.h"
+
 #include <QDebug>
 #include <QMetaObject>
 #include <QTime>
@@ -174,6 +176,12 @@ void Logger::setCurrentLogFile(QString filename)
     if (filename.isEmpty())
         return;
     Q_ASSERT(instance != nullptr);
+
+    if (!ApplicationSecurityPolicy::current().allowsUserControlledLogFile())
+    {
+        qWarning() << "File logging is disabled while AntiMicroX is running elevated.";
+        return;
+    }
 
     if (instance->outputFile.isOpen())
     {

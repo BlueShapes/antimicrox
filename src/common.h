@@ -130,9 +130,12 @@ const QString springMouseDeviceName("antimicrox Abs Mouse Emulation");
 const int ANTIMICROX_MAJOR_VERSION = PROJECT_MAJOR_VERSION;
 const int ANTIMICROX_MINOR_VERSION = PROJECT_MINOR_VERSION;
 const int ANTIMICROX_PATCH_VERSION = PROJECT_PATCH_VERSION;
+const QString ANTIMICROX_PRERELEASE_VERSION = QStringLiteral(PROJECT_PRERELEASE_VERSION);
 
 const QString programVersion =
     QString("%1.%2.%3").arg(ANTIMICROX_MAJOR_VERSION).arg(ANTIMICROX_MINOR_VERSION).arg(ANTIMICROX_PATCH_VERSION)
+    + (ANTIMICROX_PRERELEASE_VERSION.isEmpty() ? QString()
+                                               : QStringLiteral("-") + ANTIMICROX_PRERELEASE_VERSION)
 #ifdef QT_DEBUG
     + "-d"
 #endif

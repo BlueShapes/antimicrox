@@ -1,0 +1,51 @@
+if(POLICY CMP0207)
+    cmake_policy(SET CMP0207 NEW)
+endif()
+
+set(_runtime_dependency_directories
+    "@CMAKE_RUNTIME_OUTPUT_DIRECTORY@"
+    "@QT_DLL_DIR@"
+    "@SDL2_DLL_LOCATION_DIR@"
+)
+
+file(GET_RUNTIME_DEPENDENCIES
+    EXECUTABLES "@CMAKE_RUNTIME_OUTPUT_DIRECTORY@/antimicrox.exe"
+    LIBRARIES "@QT_PLUGIN_DIR@/platforms/qwindows.dll"
+    DIRECTORIES ${_runtime_dependency_directories}
+    RESOLVED_DEPENDENCIES_VAR _resolved_dependencies
+    UNRESOLVED_DEPENDENCIES_VAR _unresolved_dependencies
+    CONFLICTING_DEPENDENCIES_PREFIX _conflicting_dependencies
+    PRE_EXCLUDE_REGEXES
+        "api-ms-.*"
+        "ext-ms-.*"
+    POST_EXCLUDE_REGEXES
+        "^[A-Za-z]:/[Ww][Ii][Nn][Dd][Oo][Ww][Ss]/[Ss][Yy][Ss][Tt][Ee][Mm]32/.*"
+        "^[A-Za-z]:/[Ww][Ii][Nn][Dd][Oo][Ww][Ss]/[Ss][Yy][Ss][Ww][Oo][Ww]64/.*"
+)
+
+if(_unresolved_dependencies)
+    list(JOIN _unresolved_dependencies ", " _unresolved_dependency_names)
+    message(WARNING "Unresolved Windows runtime dependencies: ${_unresolved_dependency_names}")
+endif()
+
+if(_conflicting_dependencies_FILENAMES)
+    list(JOIN _conflicting_dependencies_FILENAMES ", " _conflicting_dependency_names)
+    message(FATAL_ERROR "Conflicting Windows runtime dependencies: ${_conflicting_dependency_names}")
+endif()
+
+set(_bundled_dependencies)
+foreach(_dependency IN LISTS _resolved_dependencies)
+    file(TO_CMAKE_PATH "${_dependency}" _normalized_dependency)
+    string(TOLOWER "${_normalized_dependency}" _normalized_dependency_lower)
+    if(NOT _normalized_dependency_lower MATCHES "/windows/(system32|syswow64)/")
+        list(APPEND _bundled_dependencies "${_normalized_dependency}")
+    endif()
+endforeach()
+
+list(REMOVE_DUPLICATES _bundled_dependencies)
+if(_bundled_dependencies)
+    file(INSTALL
+        DESTINATION "${CMAKE_INSTALL_PREFIX}/bin"
+        TYPE SHARED_LIBRARY
+        FILES ${_bundled_dependencies})
+endif()

@@ -23,6 +23,7 @@
 #include "aboutdialog.h"
 #include "advancestickassignmentdialog.h"
 #include "antimicrosettings.h"
+#include "applicationsecuritypolicy.h"
 #include "autoprofileinfo.h"
 #include "calibration.h"
 #include "commandlineutility.h"
@@ -196,7 +197,8 @@ MainWindow::MainWindow(QMap<SDL_JoystickID, InputDevice *> *joysticks, CommandLi
 #ifdef Q_OS_WIN
     if (graphical)
     {
-        if (!WinExtras::IsRunningAsAdmin())
+        const ApplicationSecurityPolicy &securityPolicy = ApplicationSecurityPolicy::current();
+        if (securityPolicy.allowsElevationRequest() && !securityPolicy.isElevated())
         {
             QIcon uacIcon = QApplication::style()->standardIcon(QStyle::SP_VistaShield);
             ui->uacPushButton->setIcon(uacIcon);
@@ -1492,6 +1494,14 @@ void MainWindow::checkHideEmptyOption()
  */
 void MainWindow::restartAsElevated()
 {
+    if (!ApplicationSecurityPolicy::current().allowsElevationRequest())
+    {
+        QMessageBox::warning(this, tr("Elevation unavailable"),
+                             tr("The portable build cannot restart as Administrator. Install AntiMicroX in a protected "
+                                "location before using elevated mode."));
+        return;
+    }
+
     QMessageBox msg;
     msg.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
     msg.setWindowTitle(tr("Run as Administrator?"));

@@ -18,6 +18,7 @@
 
 #include "xmlconfigreader.h"
 
+#include "applicationsecuritypolicy.h"
 #include "common.h"
 #include "globalvariables.h"
 #include "inputdevice.h"
@@ -129,15 +130,22 @@ bool XMLConfigReader::read()
                     xml->addData(migrationString);                    // Add converted XML string to reader
                     xml->readNextStartElement();                      // Skip joystick root node
                     configFile->close();                              // Close current config file
-                    configFile->open(QFile::WriteOnly | QFile::Text); // Write converted XML to file
-
-                    if (configFile->isOpen())
+                    if (ApplicationSecurityPolicy::current().allowsProfileMigrationWriteback())
                     {
-                        configFile->write(migrationString.toLocal8Bit());
-                        configFile->close();
+                        configFile->open(QFile::WriteOnly | QFile::Text); // Write converted XML to file
+
+                        if (configFile->isOpen())
+                        {
+                            configFile->write(migrationString.toLocal8Bit());
+                            configFile->close();
+                        } else
+                        {
+                            xml->raiseError(tr("Could not write updated profile XML to file %1.").arg(configFile->fileName()));
+                        }
                     } else
                     {
-                        xml->raiseError(tr("Could not write updated profile XML to file %1.").arg(configFile->fileName()));
+                        WARN() << "Profile migration writeback is disabled while AntiMicroX is running elevated."
+                               << " The migrated profile is being used in memory only.";
                     }
                 }
             }

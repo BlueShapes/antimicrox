@@ -29,6 +29,7 @@
 #include <cmath>
 
 #include "event.h"
+#include "applicationsecuritypolicy.h"
 #include "eventhandlerfactory.h"
 #include "globalvariables.h"
 #include "joybuttontypes/joybutton.h"
@@ -154,6 +155,12 @@ void sendevent(JoyButtonSlot *slot, bool pressed)
         EventHandlerFactory::getInstance()->handler()->sendTextEntryEvent(slot->getTextData());
     } else if ((device == JoyButtonSlot::JoyExecute) && pressed && !slot->getTextData().isEmpty())
     {
+        if (!ApplicationSecurityPolicy::current().allowsProfileProgramExecution())
+        {
+            qWarning() << "Program execution from controller profiles is disabled while AntiMicroX is running elevated.";
+            return;
+        }
+
         QStringList argumentsTempList = {};
         QString argumentsString = slot->getExtraData().toString();
         if (slot->getExtraData().canConvert<QString>())

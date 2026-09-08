@@ -60,8 +60,15 @@ endif(NOT COMPILER_IS_MSVC)
 
 # The version number.
 set(ANTIMICROX_MAJOR_VERSION 3)
-set(ANTIMICROX_MINOR_VERSION 6)
-set(ANTIMICROX_PATCH_VERSION 1)
+set(ANTIMICROX_MINOR_VERSION 7)
+set(ANTIMICROX_PATCH_VERSION 0)
+set(ANTIMICROX_PRERELEASE_VERSION "beta.1")
+
+set(ANTIMICROX_VERSION
+    "${ANTIMICROX_MAJOR_VERSION}.${ANTIMICROX_MINOR_VERSION}.${ANTIMICROX_PATCH_VERSION}")
+if(ANTIMICROX_PRERELEASE_VERSION)
+    string(APPEND ANTIMICROX_VERSION "-${ANTIMICROX_PRERELEASE_VERSION}")
+endif()
 
 if(UNIX)
     option(WITH_X11 "Compile with support for X11." ON)
@@ -130,6 +137,7 @@ endif(UNIX)
 set(antimicrox_MAIN src/main.cpp)
 
 set(antimicrox_SOURCES
+        src/applicationsecuritypolicy.cpp
         src/antimicrosettings.cpp
         src/antkeymapper.cpp
         src/applaunchhelper.cpp
@@ -262,6 +270,7 @@ set(antimicrox_SOURCES
         )
 
 set(antimicrox_HEADERS
+        src/applicationsecuritypolicy.h
         src/antimicrosettings.h
         src/antkeymapper.h
         src/applaunchhelper.h
@@ -693,11 +702,11 @@ if(UNIX)
     add_subdirectory(other)
 
     # Only way to force install target to be dependent on manpage.
-    install(CODE "execute_process(COMMAND ${CMAKE_BUILD_TOOL} manpage WORKING_DIRECTORY \"${CMAKE_CURRENT_BINARY_DIR}\")")
+    install(CODE "execute_process(COMMAND \"${CMAKE_COMMAND}\" --build \"${CMAKE_CURRENT_BINARY_DIR}\" --target manpage)")
 
     if(APPDATA)
         # Only way to force install target to be dependent on appdata.
-        install(CODE "execute_process(COMMAND ${CMAKE_BUILD_TOOL} appdata WORKING_DIRECTORY \"${CMAKE_CURRENT_BINARY_DIR}\")")
+        install(CODE "execute_process(COMMAND \"${CMAKE_COMMAND}\" --build \"${CMAKE_CURRENT_BINARY_DIR}\" --target appdata)")
     endif(APPDATA)
 endif(UNIX)
 
@@ -790,6 +799,16 @@ if(WIN32)
     install(FILES
         ${QT_PLUGIN_DIR}/platforms/qwindows.dll
         DESTINATION ./bin/platforms/)
+
+    if(CMAKE_VERSION VERSION_LESS 3.16)
+        message(FATAL_ERROR "Windows packaging requires CMake 3.16 or newer to collect runtime dependencies.")
+    endif()
+
+    configure_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/cmake/InstallWindowsRuntimeDependencies.cmake.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/InstallWindowsRuntimeDependencies.cmake"
+        @ONLY)
+    install(SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/InstallWindowsRuntimeDependencies.cmake")
 endif(WIN32)
 
 # uninstall target
@@ -803,7 +822,7 @@ add_custom_target(uninstall
 
 
 # Only way to force install target to be dependent on updateqm.
-install(CODE "execute_process(COMMAND ${CMAKE_BUILD_TOOL} updateqm WORKING_DIRECTORY \"${CMAKE_CURRENT_BINARY_DIR}\")")
+install(CODE "execute_process(COMMAND \"${CMAKE_COMMAND}\" --build \"${CMAKE_CURRENT_BINARY_DIR}\" --target updateqm)")
 
 # Use this to use some variables created here in the actual project.
 # Modify the config.h.in file using the appropriate variables.
@@ -843,12 +862,19 @@ set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
 set(CPACK_PACKAGE_VERSION_MAJOR "${ANTIMICROX_MAJOR_VERSION}")
 set(CPACK_PACKAGE_VERSION_MINOR "${ANTIMICROX_MINOR_VERSION}")
 set(CPACK_PACKAGE_VERSION_PATCH "${ANTIMICROX_PATCH_VERSION}")
+set(CPACK_PACKAGE_VERSION "${ANTIMICROX_VERSION}")
+
+if(ANTIMICROX_PRERELEASE_VERSION)
+    set(CPACK_PACKAGE_VERSION_PATCH
+        "${CPACK_PACKAGE_VERSION_PATCH}-${ANTIMICROX_PRERELEASE_VERSION}")
+endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(CPACK_PACKAGE_VERSION_PATCH "${CPACK_PACKAGE_VERSION_PATCH}-dbg")
+    set(CPACK_PACKAGE_VERSION "${CPACK_PACKAGE_VERSION}-dbg")
 endif()
 
-set(CPACK_PACKAGE_FILE_NAME "antimicrox-${ANTIMICROX_MAJOR_VERSION}.${ANTIMICROX_MINOR_VERSION}.${ANTIMICROX_PATCH_VERSION}")
+set(CPACK_PACKAGE_FILE_NAME "antimicrox-${ANTIMICROX_VERSION}")
 if(WIN32)
     if(PORTABLE_WIN)
         set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_FILE_NAME}-PortableWindows")

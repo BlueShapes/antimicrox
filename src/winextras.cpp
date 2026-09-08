@@ -344,6 +344,10 @@ const wchar_t *convertCharArrayToLPCWSTR(const char *charArray)
  */
 bool WinExtras::elevateAntiMicro()
 {
+#if defined(WIN_PORTABLE_PACKAGE)
+    qWarning() << "Refusing to elevate a portable AntiMicroX build.";
+    return false;
+#else
     QString antiProgramLocation = QDir::toNativeSeparators(qApp->applicationFilePath());
     QByteArray temp = antiProgramLocation.toUtf8();
     SHELLEXECUTEINFO sei = {sizeof(sei)};
@@ -363,6 +367,7 @@ bool WinExtras::elevateAntiMicro()
     sei.nShow = SW_NORMAL;
     BOOL result = ShellExecuteEx(&sei);
     return result;
+#endif
 }
 
 /**
