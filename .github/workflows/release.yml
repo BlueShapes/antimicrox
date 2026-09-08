@@ -2,12 +2,67 @@ name: Release
 on:
     release:
         types: [published]
+    # Forks can fail to enqueue release events even while Actions is enabled.
+    # Keep a manual, tag-scoped fallback so official artifacts can still be
+    # built from the exact commit named by an existing release.
+    workflow_dispatch:
+        inputs:
+            release_tag:
+                description: Existing GitHub release tag to build and upload
+                required: true
+                type: string
+
+env:
+    RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag }}
+
+concurrency:
+    group: release-${{ github.event.release.tag_name || inputs.release_tag }}
+    cancel-in-progress: false
 
 jobs:
+    validate-release:
+        name: Validate release tag and Build gate
+        runs-on: ubuntu-24.04
+        permissions:
+            actions: read
+            contents: read
+        outputs:
+            release_commit: ${{ steps.resolve.outputs.release_commit }}
+
+        steps:
+            - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+              with:
+                  ref: refs/tags/${{ env.RELEASE_TAG }}
+                  fetch-depth: 0
+                  persist-credentials: false
+
+            - name: Resolve and validate release
+              id: resolve
+              shell: bash
+              env:
+                  GH_TOKEN: ${{ github.token }}
+              run: |
+                  set -euo pipefail
+                  RELEASE_COMMIT="$(git rev-parse HEAD)"
+                  MAJOR="$(sed -n 's/^set(ANTIMICROX_MAJOR_VERSION \([^)]*\))$/\1/p' CMakeLists.txt)"
+                  MINOR="$(sed -n 's/^set(ANTIMICROX_MINOR_VERSION \([^)]*\))$/\1/p' CMakeLists.txt)"
+                  PATCH="$(sed -n 's/^set(ANTIMICROX_PATCH_VERSION \([^)]*\))$/\1/p' CMakeLists.txt)"
+                  PRERELEASE="$(sed -n 's/^set(ANTIMICROX_PRERELEASE_VERSION "\([^"]*\)")$/\1/p' CMakeLists.txt)"
+                  SOURCE_VERSION="$MAJOR.$MINOR.$PATCH"
+                  if [[ -n "$PRERELEASE" ]]; then
+                      SOURCE_VERSION="$SOURCE_VERSION-$PRERELEASE"
+                  fi
+
+                  test "$RELEASE_TAG" = "$SOURCE_VERSION"
+                  test "$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json isDraft,isPrerelease --jq '(.isDraft or .isPrerelease)')" = "false"
+                  test "$(gh run list --repo "$GITHUB_REPOSITORY" --workflow main.yml --commit "$RELEASE_COMMIT" --limit 20 --json status,conclusion --jq '[.[] | select(.status == "completed" and .conclusion == "success")] | length')" -gt 0
+                  echo "release_commit=$RELEASE_COMMIT" >> "$GITHUB_OUTPUT"
+
     # Windows and AppImage artifacts bundle Qt 6.10.2. Qt 5 compatibility
     # builds in main.yml are never used to produce official release artifacts.
     # Build .deb files for debian-based systems.
     build_deb:
+        needs: validate-release
         permissions:
             contents: write
         strategy:
@@ -26,6 +81,7 @@ jobs:
         steps:
             - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
               with:
+                  ref: ${{ needs.validate-release.outputs.release_commit }}
                   persist-credentials: false
 
             - name: Install Dependencies with QT6
@@ -52,12 +108,13 @@ jobs:
 
             # Upload generated files to release
             - name: Upload binaries to release
-              run: gh release upload "${{ github.event.release.tag_name }}" "${{ github.workspace }}"/build/*.deb --clobber
+              run: gh release upload "$RELEASE_TAG" "${{ github.workspace }}"/build/*.deb --clobber
               env:
                   GH_TOKEN: ${{ github.token }}
 
     # Build universal and portable AppImage package.
     build-appimage:
+        needs: validate-release
         permissions:
             contents: write
         # Version of ubuntu building this appimage, it shouldn't be the latest verion of ubuntu to avoid breaking compatibility with older systems
@@ -86,6 +143,7 @@ jobs:
 
             - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
               with:
+                  ref: ${{ needs.validate-release.outputs.release_commit }}
                   persist-credentials: false
 
             - name: Install bundled Qt
@@ -137,7 +195,7 @@ jobs:
 
             # Upload generated files to release
             - name: Upload binaries to release
-              run: gh release upload "${{ github.event.release.tag_name }}" ./build/AntiMicroX*.AppImage ./build/AntiMicroX*.zsync --clobber
+              run: gh release upload "$RELEASE_TAG" ./build/AntiMicroX*.AppImage ./build/AntiMicroX*.zsync --clobber
               env:
                   GH_TOKEN: ${{ github.token }}
 
@@ -162,11 +220,12 @@ jobs:
 
             # Upload generated files to release
             - name: Upload binaries to release
-              run: gh release upload "${{ github.event.release.tag_name }}" ./build/AntiMicroX-debug-x86_64.AppImage --clobber
+              run: gh release upload "$RELEASE_TAG" ./build/AntiMicroX-debug-x86_64.AppImage --clobber
               env:
                   GH_TOKEN: ${{ github.token }}
 
     build-windows-packages:
+        needs: validate-release
         permissions:
             contents: write
         name: Create Windows packages
@@ -178,6 +237,7 @@ jobs:
         steps:
             - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
               with:
+                  ref: ${{ needs.validate-release.outputs.release_commit }}
                   persist-credentials: false
 
             - name: Install Dependencies
@@ -225,6 +285,6 @@ jobs:
             # Do not publish a Portable Windows archive: DLL search and
             # loading occur before application startup policy can run.
             - name: Upload installer to release
-              run: gh release upload "${{ github.event.release.tag_name }}" ./build/antimicrox*.exe --clobber
+              run: gh release upload "$RELEASE_TAG" ./build/antimicrox*.exe --clobber
               env:
                   GH_TOKEN: ${{ github.token }}
