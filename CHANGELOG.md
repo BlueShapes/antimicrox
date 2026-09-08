@@ -1,15 +1,61 @@
 # Changelog
 
-## [3.7.0](https://github.com/AntiMicroX/antimicrox/tree/3.7.0) (2026-09-08)
+## [3.7.0](https://github.com/BlueShapes/antimicrox/tree/3.7.0) (2026-09-08)
+
+This release is based on upstream AntiMicroX 3.6.1 and includes the following
+fork-specific changes.
 
 **Security:**
 
-- Refuse elevated and indeterminate-elevation process starts on Windows; in-app elevation is no longer available.
-- Reject XML controller profiles larger than 16 MiB or containing DTD declarations before parsing or migration.
-- Validate missing controller controls before constructing XML wrappers.
-- Update official Windows and AppImage release builds to Qt 6.10.2 and stop publishing Portable Windows archives.
-- Pin third-party Actions and verify executable dependencies used by official release workflows.
-- Add bounded, durable logging and Windows minidumps for unhandled exceptions and owned fatal paths.
+- Refuse elevated and indeterminate-elevation process starts on Windows and root starts on Unix-like systems; remove the in-app elevation action.
+- Reject controller profiles larger than 16 MiB, DTD declarations, non-regular files, and files changed while being read.
+- Safely skip missing or incompatible controller controls instead of dereferencing invalid profile elements.
+- Stop publishing official Portable Windows archives because dependent DLLs load before the application can enforce its security policy.
+- Pin third-party Actions and release dependencies, and verify downloaded executable dependencies with SHA-256 digests.
+
+**Automatic profiles:**
+
+- Enable and synchronize automatic profiles during startup on Windows and X11.
+- Add an automatic-profile status banner and pause/resume control to each controller tab.
+- Temporarily protect manual profile and set changes from automatic switching.
+- Add profile selection from preferred folders and recently used profiles to the automatic-profile editor.
+- Capture the full executable path on Windows and reliably bring the window-capture dialog to the foreground.
+- Minimize the main window during timed capture and use a 3-second default with a 15-second maximum.
+- Avoid reloading an automatic profile when that profile is already active.
+
+**Controllers, input, and mouse:**
+
+- Add per-controller input enable/disable controls, persist their state, and release held outputs when a controller is disabled.
+- Combine input from multiple enabled controllers.
+- Release old outputs synchronously and reset mouse acceleration state when changing profiles or sets.
+- Prevent duplicate mouse contributors from multiplying cursor speed after profile reinitialization.
+- Keep Windows timer precision active while minimized or in the system tray so cursor speed remains consistent.
+- Prevent duplicate instances across Windows UAC boundaries and stop before input processing if the single-instance signal server cannot be established.
+- Add clearer diagnostics when Windows `SendInput` fails.
+- Restore the missing decimal-point key on the virtual numeric keyboard.
+
+**Crash reporting and logs:**
+
+- Keep durable append-only logs bounded to 8 MiB while preserving the newest complete UTF-8 records.
+- Flush completed log records so sudden termination is less likely to lose the final diagnostic messages.
+- Generate Windows minidumps for unhandled exceptions, `std::terminate`, and application-owned Qt fatal paths, retaining up to five dumps.
+- Avoid blocking indefinitely in the MSVC abort path or on the logger lock during fatal termination.
+
+  Minidump generation is best effort: severe process corruption or failures while
+  the Windows loader lock is held can prevent a dump, and a fatal message itself
+  may not always reach the log.
+
+**UI and desktop integration:**
+
+- Open the About dialog's Changelog link in the external browser.
+- Improve the Advanced settings warning text.
+- Add `gamepad` to the Linux desktop search keywords.
+
+**Packaging and release engineering:**
+
+- Build official Windows and AppImage packages with Qt 6.10.2; Qt 5 remains covered by compatibility CI.
+- Bundle the Qt platform plugin and required non-system runtime DLLs in the Windows installer.
+- Preserve prerelease suffixes in CMake/CPack versions and artifact names.
 
 ## [3.6.1](https://github.com/AntiMicroX/antimicrox/tree/3.6.1) (2026-05-22)
 

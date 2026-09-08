@@ -2,8 +2,8 @@
 
 ## Supported release policy
 
-The official Windows release is the installer package built with Qt 6.11.2 or
-later. AntiMicroX no longer publishes an official Portable Windows archive.
+The official Windows release is the installer package built with Qt 6.10.2.
+AntiMicroX no longer publishes an official Portable Windows archive.
 Windows loads dependent DLLs before application startup code can apply its
 security policy, so a portable archive cannot provide the same assurance.
 Locally built portable binaries may be used only as standard-user processes.
@@ -32,12 +32,10 @@ maintainers have had a reasonable opportunity to investigate.
 
 ## 3.7.0 security audit notes
 
-Official Windows and AppImage workflows bundle Qt 6.11.2 to address Qt
-6.10-series advisory coverage for CVE-2026-9499 and CVE-2026-6210. DEB
-packages use the distribution-provided Qt security updates. CVE-2026-15037
-concerns QDom serialization; AntiMicroX profile processing uses
-QXmlStreamReader and QXmlStreamWriter, so that issue does not directly apply
-to this code path.
+Official Windows and AppImage workflows bundle Qt 6.10.2. DEB packages use the
+distribution-provided Qt security updates. CVE-2026-15037 concerns QDom
+serialization; AntiMicroX profile processing uses QXmlStreamReader and
+QXmlStreamWriter, so that issue does not directly apply to this code path.
 
 Release workflows pin third-party Actions and AppImage build tools to immutable
 commits or release assets. Downloaded build executables and the embedded
