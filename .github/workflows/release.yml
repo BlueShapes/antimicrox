@@ -276,8 +276,9 @@ jobs:
 
             - name: Run security policy tests
               run: |
-                cmake --build '${{ github.workspace }}'/build --target SecurityPolicyTests --parallel 8
-                ctest --test-dir '${{ github.workspace }}'/build --output-on-failure -R SecurityPolicyTests
+                  cmake --build '${{ github.workspace }}'/build --target SecurityPolicyTests --parallel 8
+                  QT_BIN="$(cygpath -u "$QT_ROOT_DIR")/bin"
+                  PATH="$QT_BIN:$PATH" ctest --test-dir '${{ github.workspace }}'/build --output-on-failure -R SecurityPolicyTests
 
             - name: Build Installer
               run: cmake --build '${{ github.workspace }}'/build --target package --parallel 8
