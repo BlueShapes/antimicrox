@@ -1,5 +1,15 @@
 # Changelog
 
+## [3.7.0](https://github.com/AntiMicroX/antimicrox/tree/3.7.0) (2026-09-08)
+
+**Security:**
+
+- Refuse elevated and indeterminate-elevation process starts on Windows; in-app elevation is no longer available.
+- Reject XML controller profiles larger than 16 MiB or containing DTD declarations before parsing or migration.
+- Validate missing controller controls before constructing XML wrappers.
+- Update official Windows and AppImage release builds to Qt 6.11.2 and stop publishing Portable Windows archives.
+- Pin third-party Actions and verify executable dependencies used by official release workflows.
+
 ## [3.6.1](https://github.com/AntiMicroX/antimicrox/tree/3.6.1) (2026-05-22)
 
 Just a minor release mainly tackling issues related to flatpak package on X11.

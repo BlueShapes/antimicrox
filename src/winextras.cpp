@@ -12,6 +12,7 @@
 #include <QSettings>
 
 #include "winextras.h"
+#include "windowstokenelevation.h"
 #include <shlobj.h>
 
 typedef DWORD(WINAPI *MYPROC)(HANDLE, DWORD, LPWSTR, PDWORD);
@@ -330,67 +331,23 @@ void WinExtras::removeFileAssociationFromRegistry()
     SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, 0, 0);
 }
 
-// This functions works only with QT6 and newer C++
-const wchar_t *convertCharArrayToLPCWSTR(const char *charArray)
-{
-    wchar_t *wString = new wchar_t[1024];
-    MultiByteToWideChar(CP_ACP, 0, charArray, -1, wString, 1024);
-    return wString;
-}
-
 /**
- * @brief Attempt to elevate process using runas
- * @return Execution status
+ * @brief Determine whether the current process token is elevated.
+ * @return Unknown when the process token cannot be queried.
  */
-bool WinExtras::elevateAntiMicro()
+WinExtras::ElevationState WinExtras::elevationState() noexcept
 {
-#if defined(WIN_PORTABLE_PACKAGE)
-    qWarning() << "Refusing to elevate a portable AntiMicroX build.";
-    return false;
-#else
-    QString antiProgramLocation = QDir::toNativeSeparators(qApp->applicationFilePath());
-    QByteArray temp = antiProgramLocation.toUtf8();
-    SHELLEXECUTEINFO sei = {sizeof(sei)};
-    char tempverb[6] = "runas";
-    QByteArray ba = antiProgramLocation.toLocal8Bit();
-    char *tempfile = ba.data();
-    tempverb[5] = '\0';
-    tempfile[antiProgramLocation.length()] = '\0';
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-    sei.lpVerb = convertCharArrayToLPCWSTR(tempverb);
-    sei.lpFile = convertCharArrayToLPCWSTR(tempfile);
-#else
-    sei.lpVerb = tempverb;
-    sei.lpFile = tempfile;
-#endif
-    sei.hwnd = NULL;
-    sei.nShow = SW_NORMAL;
-    BOOL result = ShellExecuteEx(&sei);
-    return result;
-#endif
-}
-
-/**
- * @brief Check if the application is running with administrative privileges.
- * @return Status indicating administrative privileges
- */
-bool WinExtras::IsRunningAsAdmin()
-{
-    BOOL isAdmin = FALSE;
-    PSID administratorsGroup;
-    SID_IDENTIFIER_AUTHORITY ntAuthority = SECURITY_NT_AUTHORITY;
-    isAdmin = AllocateAndInitializeSid(&ntAuthority, 2, SECURITY_BUILTIN_DOMAIN_RID, DOMAIN_ALIAS_RID_ADMINS, 0, 0, 0, 0, 0,
-                                       0, &administratorsGroup);
-    if (isAdmin)
+    switch (WindowsTokenElevation::current())
     {
-        if (!CheckTokenMembership(NULL, administratorsGroup, &isAdmin))
-        {
-            isAdmin = FALSE;
-        }
-        FreeSid(administratorsGroup);
+    case WindowsTokenElevation::State::NotElevated:
+        return ElevationState::NotElevated;
+    case WindowsTokenElevation::State::Elevated:
+        return ElevationState::Elevated;
+    case WindowsTokenElevation::State::Unknown:
+        return ElevationState::Unknown;
     }
 
-    return isAdmin;
+    return ElevationState::Unknown;
 }
 
 /**

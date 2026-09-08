@@ -14,6 +14,8 @@ on:
     workflow_dispatch:
 
 jobs:
+    # Qt 5 entries are compatibility checks only. Official release artifacts
+    # are built by release.yml with the patched Qt 6.11.2 toolchain.
     # Build job for Ubuntu
     build-ubuntu:
         strategy:
@@ -54,7 +56,7 @@ jobs:
         continue-on-error: ${{ matrix.experimental }}
 
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
             - name: Install Dependencies
               run: sudo apt-get update && sudo apt-get install extra-cmake-modules libsdl2-dev libxi-dev libxtst-dev libx11-dev itstool gettext ninja-build ${{ matrix.qt-packages }}
@@ -67,6 +69,9 @@ jobs:
 
             - name: Build AntiMicroX
               run: cmake --build ${{ github.workspace }}/build
+
+            - name: Run security policy tests
+              run: ctest --test-dir ${{ github.workspace }}/build --output-on-failure -R SecurityPolicyTests
 
     # Build job for Windows
     build-windows:
@@ -84,7 +89,7 @@ jobs:
                       experimental: false
                     - name: WinServer2022 MinGW QT6
                       image: windows-2022
-                      qt-version: "6.10"
+                      qt-version: "6.11.2"
                       shell: msys2 {0}
                       cmake-args: -G Ninja
                       build-type: Debug
@@ -100,7 +105,7 @@ jobs:
                       experimental: false
                     - name: WinServer2022 MSVC QT6
                       image: windows-2022
-                      qt-version: "6.10"
+                      qt-version: "6.11.2"
                       shell: cmd
                       cmake-args: -G "Visual Studio 17 2022" "-DSDL2_PATH=%WORKSPACE_DIR%/sdl2/" "-DSDL2_LIBRARY=%WORKSPACE_DIR%/sdl2/lib/x64/SDL2.lib" "-DSDL2_INCLUDE_DIR=%WORKSPACE_DIR%/sdl2/" "-DSDL2_DLL_LOCATION_DIR=%WORKSPACE_DIR%/sdl2/lib/x64/SDL2.dll"
                       build-type: Debug
@@ -114,11 +119,11 @@ jobs:
                 shell:  ${{ matrix.shell }}
 
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
             - name: Install Dependencies (msys2)
               if: startsWith(matrix.shell, 'msys2')
-              uses: msys2/setup-msys2@v2
+              uses: msys2/setup-msys2@66cd2cce69caa17b53920067426061ca1de3a884 # v2
               with:
                   install: >-
                       mingw-w64-x86_64-toolchain
@@ -131,25 +136,27 @@ jobs:
               if: startsWith(matrix.shell, 'msys2')
               run: |
                 curl -L -o mingw-w64-x86_64-SDL2-2.32.10-1-any.pkg.tar.zst https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-SDL2-2.32.10-1-any.pkg.tar.zst
+                echo "5991afbcfeb2f8b838ab80b2270d713a727199ca392715677a7c1931a0d9ecef  mingw-w64-x86_64-SDL2-2.32.10-1-any.pkg.tar.zst" | sha256sum --check --strict
                 pacman --noconfirm -U mingw-w64-x86_64-SDL2-2.32.10-1-any.pkg.tar.zst
             
             - name: Install sdl2 (msvc)
               if: startsWith(matrix.shell, 'cmd')
               run: |
                 curl -L -o SDL2-devel-2.32.10-VC.zip https://github.com/libsdl-org/SDL/releases/download/release-2.32.10/SDL2-devel-2.32.10-VC.zip
+                powershell -NoProfile -Command "$actual=(Get-FileHash -Algorithm SHA256 -LiteralPath 'SDL2-devel-2.32.10-VC.zip').Hash.ToLowerInvariant(); if ($actual -ne 'af347939395a58b365846aaea27391e69f9ec9d4dd650d6ac40802159b418a6e') { throw 'SDL2 archive checksum mismatch' }"
                 unzip SDL2-devel-2.32.10-VC.zip
                 mv "${{ github.workspace }}/SDL2-2.32.10" "${{ github.workspace }}/sdl2"
                 mklink /J "${{ github.workspace }}\sdl2\SDL2" "${{ github.workspace }}\sdl2\include"
               
             - name: Install MSVC
               if: startsWith(matrix.shell, 'cmd')
-              uses: TheMrMilchmann/setup-msvc-dev@v3
+              uses: TheMrMilchmann/setup-msvc-dev@ced9887c29958f18f71b18c99d9eb0837859434c # v3
               with:
                 arch: x64
                 toolset: 14
 
             - name: Install Qt
-              uses: jurplel/install-qt-action@v4
+              uses: jurplel/install-qt-action@48d3ad6db93f3627c8ee7a0454bc6f3744f7e730 # v4
               with:
                   version: ${{ matrix.qt-version }}
                   host: "windows"
@@ -166,3 +173,6 @@ jobs:
               
             - name: Build
               run: cmake --build "${{ github.workspace }}/build" --parallel 8
+
+            - name: Run security policy tests
+              run: ctest --test-dir "${{ github.workspace }}/build" --output-on-failure -R SecurityPolicyTests

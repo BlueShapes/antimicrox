@@ -62,7 +62,7 @@ endif(NOT COMPILER_IS_MSVC)
 set(ANTIMICROX_MAJOR_VERSION 3)
 set(ANTIMICROX_MINOR_VERSION 7)
 set(ANTIMICROX_PATCH_VERSION 0)
-set(ANTIMICROX_PRERELEASE_VERSION "beta.1")
+set(ANTIMICROX_PRERELEASE_VERSION "")
 
 set(ANTIMICROX_VERSION
     "${ANTIMICROX_MAJOR_VERSION}.${ANTIMICROX_MINOR_VERSION}.${ANTIMICROX_PATCH_VERSION}")
@@ -90,6 +90,10 @@ option(ANTIMICROX_PKG_VERSION "Manually define version of package displayed in i
 option(CHECK_FOR_UPDATES "Enable checking for updates using GitHub REST API." OFF)
 option(BUILD_DOCS "Build documentation" OFF)
 option(WITH_TESTS "Allow tests for classes" OFF)
+
+# Keep the focused security-policy tests in normal builds without enabling the
+# legacy WITH_TESTS suite, which has separate maintenance constraints.
+include(CTest)
 
 if(WITH_TESTS)
     message("Tests enabled")
@@ -138,6 +142,7 @@ set(antimicrox_MAIN src/main.cpp)
 
 set(antimicrox_SOURCES
         src/applicationsecuritypolicy.cpp
+        src/profilexmlsafety.cpp
         src/antimicrosettings.cpp
         src/antkeymapper.cpp
         src/applaunchhelper.cpp
@@ -273,6 +278,8 @@ set(antimicrox_HEADERS
         src/applicationsecuritypolicy.h
         src/antimicrosettings.h
         src/antkeymapper.h
+        src/profilefilesizepolicy.h
+        src/profilexmlsafety.h
         src/applaunchhelper.h
         src/autoprofileinfo.h
         src/gui/axisvaluebox.h
@@ -483,6 +490,7 @@ elseif(WIN32)
     LIST(APPEND antimicrox_SOURCES
         src/autoprofilewatcher.cpp
         src/winextras.cpp
+        src/windowstokenelevation.cpp
          src/qtwinkeymapper.cpp
          src/gui/winappprofiletimerdialog.cpp
          src/gui/capturedwindowinfodialog.cpp
@@ -492,6 +500,7 @@ elseif(WIN32)
     LIST(APPEND antimicrox_HEADERS
         src/autoprofilewatcher.h
         src/winextras.h
+        src/windowstokenelevation.h
         src/qtwinkeymapper.h
         src/gui/winappprofiletimerdialog.h
         src/gui/capturedwindowinfodialog.h
@@ -833,8 +842,11 @@ configure_file(
 
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/CHANGELOG.md DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/src/)
 
+if(BUILD_TESTING)
+    add_subdirectory(tests/securitypolicy)
+endif(BUILD_TESTING)
+
 if(WITH_TESTS)
-    enable_testing()
     add_subdirectory(tests)
 endif(WITH_TESTS)
 

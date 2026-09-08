@@ -54,6 +54,10 @@
 #include <iostream>
 #include <stdexcept>
 
+#ifdef Q_OS_WIN
+    #include <windows.h>
+#endif
+
 #ifdef Q_OS_UNIX
     #include <signal.h>
 
@@ -228,19 +232,23 @@ void importLegacySettingsIfExist()
 
 int main(int argc, char *argv[])
 {
+    if (ApplicationSecurityPolicy::current().mustRefuseStartup())
+    {
+#ifdef Q_OS_WIN
+        MessageBoxW(nullptr, L"AntiMicroX cannot run with Administrator privileges. Restart it as a standard user. "
+                             L"If elevation status cannot be verified, it is refused for your safety.",
+                    L"Elevated execution is not supported", MB_OK | MB_ICONERROR);
+#else
+        std::cerr << "AntiMicroX cannot run with root privileges. Restart it as a standard user.\n";
+#endif
+        return EXIT_FAILURE;
+    }
+
     qInstallMessageHandler(Logger::loggerMessageHandler);
 
     QApplication antimicrox(argc, argv);
     QCoreApplication::setApplicationName("antimicrox");
     QCoreApplication::setApplicationVersion(PadderCommon::programVersion);
-
-    if (ApplicationSecurityPolicy::current().mustRefuseStartup())
-    {
-        QMessageBox::critical(nullptr, QObject::tr("Unsafe elevated portable build"),
-                              QObject::tr("The portable build cannot run as Administrator. Install AntiMicroX in a "
-                                          "protected location before using elevated mode."));
-        return EXIT_FAILURE;
-    }
 
     QTextStream outstream(stdout);
     Logger *appLogger = Logger::createInstance(&outstream, Logger::LogLevel::LOG_WARNING);

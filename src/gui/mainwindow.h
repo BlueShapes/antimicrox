@@ -141,10 +141,6 @@ class MainWindow : public QMainWindow
     void showStickAssignmentDialog();
     void checkHideEmptyOption();
 
-#ifdef Q_OS_WIN
-    void restartAsElevated();
-#endif
-
     void propogateMappingUpdate(QString mapping, InputDevice *device);
     void autoprofileLoad(AutoProfileInfo *info); // MainConfiguration class
     void checkAutoProfileWatcherTimer();         // MainConfiguration class

@@ -10,6 +10,13 @@ class WinExtras : public QObject
 {
     Q_OBJECT
   public:
+    enum class ElevationState
+    {
+        NotElevated,
+        Elevated,
+        Unknown,
+    };
+
     static QString getDisplayString(unsigned int virtualkey);
     static unsigned int getVirtualKey(QString codestring);
     static unsigned int correctVirtualKey(unsigned int scancode, unsigned int virtualkey);
@@ -20,8 +27,7 @@ class WinExtras : public QObject
     static bool containsFileAssociationinRegistry();
     static void writeFileAssocationToRegistry();
     static void removeFileAssociationFromRegistry();
-    static bool IsRunningAsAdmin();
-    static bool elevateAntiMicro();
+    [[nodiscard]] static ElevationState elevationState() noexcept;
     static void disablePointerPrecision();
     static void enablePointerPrecision();
     static bool isUsingEnhancedPointerPrecision();

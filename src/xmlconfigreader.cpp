@@ -23,6 +23,7 @@
 #include "globalvariables.h"
 #include "inputdevice.h"
 #include "joystick.h"
+#include "profilexmlsafety.h"
 #include "xml/inputdevicexml.h"
 #include "xmlconfigmigration.h"
 #include "xmlconfigwriter.h"
@@ -101,17 +102,13 @@ bool XMLConfigReader::read()
 
     if ((configFile != nullptr) && configFile->exists() && (m_joystick != nullptr))
     {
-        xml->clear();
-
-        if (!configFile->isOpen())
+        if (!ProfileXmlSafety::prepareReader(*xml, *configFile))
         {
-            if (configFile->open(QFile::ReadOnly | QFile::Text))
-                xml->setDevice(configFile);
-            else
-                WARN() << "Could not open file: " << configFile->fileName();
+            WARN() << "Refusing unsafe profile" << configFile->fileName() << ':' << xml->errorString();
+            if (configFile->isOpen())
+                configFile->close();
+            return true;
         }
-
-        xml->readNextStartElement();
 
         if (!deviceTypes.contains(xml->name().toString()))
         {

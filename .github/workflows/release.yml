@@ -4,8 +4,12 @@ on:
         types: [published]
 
 jobs:
+    # Windows and AppImage artifacts bundle Qt 6.11.2. Qt 5 compatibility
+    # builds in main.yml are never used to produce official release artifacts.
     # Build .deb files for debian-based systems.
     build_deb:
+        permissions:
+            contents: write
         strategy:
           fail-fast: false
           matrix: 
@@ -20,13 +24,20 @@ jobs:
         runs-on: ${{ matrix.image }}
 
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+              with:
+                  persist-credentials: false
 
             - name: Install Dependencies with QT6
               run: sudo apt-get update && sudo apt-get install extra-cmake-modules qt6-base-dev qt6-l10n-tools qt6-tools-dev-tools libqt6core5compat6-dev qt6-tools-dev libsdl2-dev libxi-dev libxtst-dev libx11-dev itstool gettext
 
             - name: Configure CMake
               run: cmake -DCPACK_GENERATOR="DEB" -DCMAKE_BUILD_TYPE=Release -DCHECK_FOR_UPDATES=ON -DANTIMICROX_PKG_VERSION="GitHub deb Release" -B ${{ github.workspace }}/build
+
+            - name: Run security policy tests
+              run: |
+                  cmake --build ${{ github.workspace }}/build --target SecurityPolicyTests --parallel 8
+                  ctest --test-dir ${{ github.workspace }}/build --output-on-failure -R SecurityPolicyTests
 
             - name: Create Deb package
               id: create_deb
@@ -41,13 +52,14 @@ jobs:
 
             # Upload generated files to release
             - name: Upload binaries to release
-              uses: AButler/upload-release-assets@v3.0
-              with:
-                  files: ${{ github.workspace }}/build/*.deb
-                  repo-token: ${{ github.token }}
+              run: gh release upload "${{ github.event.release.tag_name }}" "${{ github.workspace }}"/build/*.deb --clobber
+              env:
+                  GH_TOKEN: ${{ github.token }}
 
     # Build universal and portable AppImage package.
     build-appimage:
+        permissions:
+            contents: write
         # Version of ubuntu building this appimage, it shouldn't be the latest verion of ubuntu to avoid breaking compatibility with older systems
         name: Build AppImage package
         runs-on: ubuntu-24.04
@@ -62,7 +74,8 @@ jobs:
             #Replace original library with the newer one
             - name: Build and install newer SDL2
               run: |
-                git clone https://github.com/libsdl-org/SDL.git -b release-2.32.10
+                git clone --filter=blob:none --no-checkout https://github.com/libsdl-org/SDL.git
+                git -C SDL checkout --detach 5d249570393f7a37e037abf22cd6012a4cc56a71
                 cd SDL
                 mkdir build
                 cd build
@@ -71,14 +84,31 @@ jobs:
                 sudo cmake --install .
                 sudo cp /usr/local/lib/libSDL2-2.0.so.0 /usr/lib/x86_64-linux-gnu/libSDL2-2.0.so.0
 
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+              with:
+                  persist-credentials: false
+
+            - name: Install bundled Qt
+              uses: jurplel/install-qt-action@48d3ad6db93f3627c8ee7a0454bc6f3744f7e730 # v4
+              with:
+                  version: "6.11.2"
+                  host: "linux"
+                  target: "desktop"
+                  arch: "gcc_64"
+                  modules: "qt5compat"
+                  install-deps: "true"
 
             - name: Prepare files needed to create AppImage
               run: |
                   mkdir build && cd ./build
-                  wget https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
-                  wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
-                  wget https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
+                  wget https://github.com/linuxdeploy/linuxdeploy/releases/download/1-alpha-20251107-1/linuxdeploy-x86_64.AppImage
+                  wget https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-x86_64.AppImage
+                  wget https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/1-alpha-20250213-1/linuxdeploy-plugin-qt-x86_64.AppImage
+                  wget https://github.com/AppImage/type2-runtime/releases/download/20251108/runtime-x86_64
+                  echo "c20cd71e3a4e3b80c3483cef793cda3f4e990aca14014d23c544ca3ce1270b4d  linuxdeploy-x86_64.AppImage" | sha256sum --check --strict
+                  echo "ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0  appimagetool-x86_64.AppImage" | sha256sum --check --strict
+                  echo "15106be885c1c48a021198e7e1e9a48ce9d02a86dd0a1848f00bdbf3c1c92724  linuxdeploy-plugin-qt-x86_64.AppImage" | sha256sum --check --strict
+                  echo "2fca8b443c92510f1483a883f60061ad09b46b978b2631c807cd873a47ec260d  runtime-x86_64" | sha256sum --check --strict
                   chmod +x linuxdeploy-x86_64.AppImage
                   chmod +x appimagetool-x86_64.AppImage
                   chmod +x linuxdeploy-plugin-qt-x86_64.AppImage
@@ -90,23 +120,26 @@ jobs:
                   MINOR=`echo $VERSION | cut -d " " -f 2`
                   PATCH=`echo $VERSION | cut -d " " -f 3`
                   cd build
-                  cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DANTIMICROX_PKG_VERSION="$MAJOR.$MINOR.$PATCH-x86_64 GitHub AppImage Release"
+                  cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_PREFIX_PATH="${QT_ROOT_DIR}/lib/cmake" -DANTIMICROX_PKG_VERSION="$MAJOR.$MINOR.$PATCH-x86_64 GitHub AppImage Release"
+                  cmake --build . --target SecurityPolicyTests --parallel 8
+                  ctest --output-on-failure -R SecurityPolicyTests
                   make install DESTDIR=AppDir -j8
 
             # UPDATE_INFORMATION describes where information about updates can be found
             - name: Create AppImage file
               run: |
                   cd build
+                  export PATH="${QT_ROOT_DIR}/bin:${PATH}"
+                  export CMAKE_PREFIX_PATH="${QT_ROOT_DIR}/lib/cmake"
                   export UPDATE_INFORMATION="zsync|https://github.com/$GITHUB_REPOSITORY/releases/latest/download/antimicrox-x86_64.AppImage.zsync"
                   ./linuxdeploy-x86_64.AppImage --appdir AppDir --plugin qt
-                  ./appimagetool-x86_64.AppImage AppDir/ -u "$UPDATE_INFORMATION"
+                  ./appimagetool-x86_64.AppImage --runtime-file runtime-x86_64 AppDir/ -u "$UPDATE_INFORMATION"
 
             # Upload generated files to release
             - name: Upload binaries to release
-              uses: AButler/upload-release-assets@v3.0
-              with:
-                  files: ./build/AntiMicroX*.AppImage;./build/AntiMicroX*.zsync
-                  repo-token: ${{ github.token }}
+              run: gh release upload "${{ github.event.release.tag_name }}" ./build/AntiMicroX*.AppImage ./build/AntiMicroX*.zsync --clobber
+              env:
+                  GH_TOKEN: ${{ github.token }}
 
             - name: Build AntiMicroX-debug
               run: |
@@ -115,24 +148,27 @@ jobs:
                   MINOR=`echo $VERSION | cut -d " " -f 2`
                   PATCH=`echo $VERSION | cut -d " " -f 3`
                   cd build
-                  cmake .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=/usr -DANTIMICROX_PKG_VERSION="$MAJOR.$MINOR.$PATCH-debug-x86_64 \(AppImage-debug\)"
+                  cmake .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_PREFIX_PATH="${QT_ROOT_DIR}/lib/cmake" -DANTIMICROX_PKG_VERSION="$MAJOR.$MINOR.$PATCH-debug-x86_64 \(AppImage-debug\)"
                   make install DESTDIR=AppDir -j8
 
             - name: Create AppImage debug file
               run: |
                   cd build
+                  export PATH="${QT_ROOT_DIR}/bin:${PATH}"
+                  export CMAKE_PREFIX_PATH="${QT_ROOT_DIR}/lib/cmake"
                   ./linuxdeploy-x86_64.AppImage --appdir AppDir --plugin qt
-                  ./appimagetool-x86_64.AppImage AppDir/
+                  ./appimagetool-x86_64.AppImage --runtime-file runtime-x86_64 AppDir/
                   mv AntiMicroX-x86_64.AppImage AntiMicroX-debug-x86_64.AppImage
 
             # Upload generated files to release
             - name: Upload binaries to release
-              uses: AButler/upload-release-assets@v3.0
-              with:
-                  files: ./build/AntiMicroX*.AppImage
-                  repo-token: ${{ github.token }}
+              run: gh release upload "${{ github.event.release.tag_name }}" ./build/AntiMicroX-debug-x86_64.AppImage --clobber
+              env:
+                  GH_TOKEN: ${{ github.token }}
 
     build-windows-packages:
+        permissions:
+            contents: write
         name: Create Windows packages
         runs-on: windows-2022
         defaults:
@@ -140,10 +176,12 @@ jobs:
                 shell: msys2 {0}
 
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+              with:
+                  persist-credentials: false
 
             - name: Install Dependencies
-              uses: msys2/setup-msys2@v2
+              uses: msys2/setup-msys2@66cd2cce69caa17b53920067426061ca1de3a884 # v2
               with:
                   install: >-
                       mingw-w64-x86_64-toolchain
@@ -158,12 +196,13 @@ jobs:
             - name: Install sdl2
               run: |
                 curl -L -o mingw-w64-x86_64-SDL2-2.32.10-1-any.pkg.tar.zst https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-SDL2-2.32.10-1-any.pkg.tar.zst
+                echo "5991afbcfeb2f8b838ab80b2270d713a727199ca392715677a7c1931a0d9ecef  mingw-w64-x86_64-SDL2-2.32.10-1-any.pkg.tar.zst" | sha256sum --check --strict
                 pacman --noconfirm -U mingw-w64-x86_64-SDL2-2.32.10-1-any.pkg.tar.zst
 
             - name: Install Qt
-              uses: jurplel/install-qt-action@v4
+              uses: jurplel/install-qt-action@48d3ad6db93f3627c8ee7a0454bc6f3744f7e730 # v4
               with:
-                  version: "6.10"
+                  version: "6.11.2"
                   host: "windows"
                   target: "desktop"
                   arch: "win64_mingw"
@@ -175,19 +214,17 @@ jobs:
               env:
                   CMAKE_PREFIX_PATH: "${{ env.QT_ROOT_DIR }}/lib/cmake"
 
+            - name: Run security policy tests
+              run: |
+                cmake --build '${{ github.workspace }}'/build --target SecurityPolicyTests --parallel 8
+                ctest --test-dir '${{ github.workspace }}'/build --output-on-failure -R SecurityPolicyTests
+
             - name: Build Installer
               run: cmake --build '${{ github.workspace }}'/build --target package --parallel 8
 
-            - name: Configure CMake (portable)
-              run: cmake -DCMAKE_BUILD_TYPE=Release -DCHECK_FOR_UPDATES=ON -DANTIMICROX_PKG_VERSION="GitHub Portable Windows Release" -DPORTABLE_WIN=ON -B '${{ github.workspace }}'/build
+            # Do not publish a Portable Windows archive: DLL search and
+            # loading occur before application startup policy can run.
+            - name: Upload installer to release
+              run: gh release upload "${{ github.event.release.tag_name }}" ./build/antimicrox*.exe --clobber
               env:
-                  CMAKE_PREFIX_PATH: "${{ env.QT_ROOT_DIR }}/lib/cmake"
-
-            - name: Build ZIP Package
-              run: cmake --build '${{ github.workspace }}'/build --target package --parallel 8
-
-            - name: Upload binaries to release
-              uses: AButler/upload-release-assets@v3.0
-              with:
-                  files: build/antimicrox*.exe;build/antimicrox*.zip
-                  repo-token: ${{ github.token }}
+                  GH_TOKEN: ${{ github.token }}

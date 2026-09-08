@@ -50,8 +50,15 @@ void GameControllerSet::reset() { resetSticks(); }
 void GameControllerSet::applyHapticTrigger()
 {
     GameController *controller = qobject_cast<GameController *>(getInputDevice());
-    HapticTriggerPs5 *left_effect = getJoyAxis(SDL_CONTROLLER_AXIS_TRIGGERLEFT)->getHapticTrigger();
-    HapticTriggerPs5 *right_effect = getJoyAxis(SDL_CONTROLLER_AXIS_TRIGGERRIGHT)->getHapticTrigger();
+    GameControllerTrigger *leftTrigger =
+        qobject_cast<GameControllerTrigger *>(getJoyAxis(SDL_CONTROLLER_AXIS_TRIGGERLEFT));
+    GameControllerTrigger *rightTrigger =
+        qobject_cast<GameControllerTrigger *>(getJoyAxis(SDL_CONTROLLER_AXIS_TRIGGERRIGHT));
+    if (controller == nullptr || leftTrigger == nullptr || rightTrigger == nullptr)
+        return;
+
+    HapticTriggerPs5 *left_effect = leftTrigger->getHapticTrigger();
+    HapticTriggerPs5 *right_effect = rightTrigger->getHapticTrigger();
 
     if (left_effect == nullptr || right_effect == nullptr)
         return;
@@ -69,16 +76,22 @@ void GameControllerSet::populateSticksDPad()
 { // Left Stick Assignment
     JoyAxis *axisX = getJoyAxis(SDL_CONTROLLER_AXIS_LEFTX);
     JoyAxis *axisY = getJoyAxis(SDL_CONTROLLER_AXIS_LEFTY);
-    JoyControlStick *stick1 = new JoyControlStick(axisX, axisY, 0, getIndex(), this);
-    stick1->setDefaultStickName("L Stick");
-    addControlStick(0, stick1);
+    if (axisX != nullptr && axisY != nullptr)
+    {
+        JoyControlStick *stick1 = new JoyControlStick(axisX, axisY, 0, getIndex(), this);
+        stick1->setDefaultStickName("L Stick");
+        addControlStick(0, stick1);
+    }
 
     // Right Stick Assignment
     axisX = getJoyAxis(SDL_CONTROLLER_AXIS_RIGHTX);
     axisY = getJoyAxis(SDL_CONTROLLER_AXIS_RIGHTY);
-    JoyControlStick *stick2 = new JoyControlStick(axisX, axisY, 1, getIndex(), this);
-    stick2->setDefaultStickName("R Stick");
-    addControlStick(1, stick2);
+    if (axisX != nullptr && axisY != nullptr)
+    {
+        JoyControlStick *stick2 = new JoyControlStick(axisX, axisY, 1, getIndex(), this);
+        stick2->setDefaultStickName("R Stick");
+        addControlStick(1, stick2);
+    }
 
     // Assign DPad buttons as a virtual DPad. Allows rougelike controls
     // to be assigned.
@@ -86,27 +99,38 @@ void GameControllerSet::populateSticksDPad()
     JoyButton *buttonDown = getJoyButton(SDL_CONTROLLER_BUTTON_DPAD_DOWN);
     JoyButton *buttonLeft = getJoyButton(SDL_CONTROLLER_BUTTON_DPAD_LEFT);
     JoyButton *buttonRight = getJoyButton(SDL_CONTROLLER_BUTTON_DPAD_RIGHT);
-    GameControllerDPad *controllerDPad =
-        new GameControllerDPad(buttonUp, buttonDown, buttonLeft, buttonRight, 0, getIndex(), this, this);
-    controllerDPad->setDefaultDPadName("DPad");
-    addVDPad(0, controllerDPad);
+    if (buttonUp != nullptr && buttonDown != nullptr && buttonLeft != nullptr && buttonRight != nullptr)
+    {
+        GameControllerDPad *controllerDPad =
+            new GameControllerDPad(buttonUp, buttonDown, buttonLeft, buttonRight, 0, getIndex(), this, this);
+        controllerDPad->setDefaultDPadName("DPad");
+        addVDPad(0, controllerDPad);
+    }
 
     // Give default names to buttons
-    getJoyButton(SDL_CONTROLLER_BUTTON_A)->setDefaultButtonName("A");
-    getJoyButton(SDL_CONTROLLER_BUTTON_B)->setDefaultButtonName("B");
-    getJoyButton(SDL_CONTROLLER_BUTTON_X)->setDefaultButtonName("X");
-    getJoyButton(SDL_CONTROLLER_BUTTON_Y)->setDefaultButtonName("Y");
-    getJoyButton(SDL_CONTROLLER_BUTTON_BACK)->setDefaultButtonName(tr("Back"));
-    getJoyButton(SDL_CONTROLLER_BUTTON_GUIDE)->setDefaultButtonName(tr("Guide"));
-    getJoyButton(SDL_CONTROLLER_BUTTON_START)->setDefaultButtonName(tr("Start"));
-    getJoyButton(SDL_CONTROLLER_BUTTON_LEFTSTICK)->setDefaultButtonName(tr("LS Click"));
-    getJoyButton(SDL_CONTROLLER_BUTTON_RIGHTSTICK)->setDefaultButtonName(tr("RS Click"));
-    getJoyButton(SDL_CONTROLLER_BUTTON_LEFTSHOULDER)->setDefaultButtonName(tr("L Shoulder"));
-    getJoyButton(SDL_CONTROLLER_BUTTON_RIGHTSHOULDER)->setDefaultButtonName(tr("R Shoulder"));
+    const auto setButtonName = [this](int buttonIndex, const QString &name) {
+        if (JoyButton *button = getJoyButton(buttonIndex))
+            button->setDefaultButtonName(name);
+    };
+    setButtonName(SDL_CONTROLLER_BUTTON_A, "A");
+    setButtonName(SDL_CONTROLLER_BUTTON_B, "B");
+    setButtonName(SDL_CONTROLLER_BUTTON_X, "X");
+    setButtonName(SDL_CONTROLLER_BUTTON_Y, "Y");
+    setButtonName(SDL_CONTROLLER_BUTTON_BACK, tr("Back"));
+    setButtonName(SDL_CONTROLLER_BUTTON_GUIDE, tr("Guide"));
+    setButtonName(SDL_CONTROLLER_BUTTON_START, tr("Start"));
+    setButtonName(SDL_CONTROLLER_BUTTON_LEFTSTICK, tr("LS Click"));
+    setButtonName(SDL_CONTROLLER_BUTTON_RIGHTSTICK, tr("RS Click"));
+    setButtonName(SDL_CONTROLLER_BUTTON_LEFTSHOULDER, tr("L Shoulder"));
+    setButtonName(SDL_CONTROLLER_BUTTON_RIGHTSHOULDER, tr("R Shoulder"));
 
     // Give default names to triggers
-    getJoyAxis(SDL_CONTROLLER_AXIS_TRIGGERLEFT)->setDefaultAxisName(tr("L Trigger"));
-    getJoyAxis(SDL_CONTROLLER_AXIS_TRIGGERRIGHT)->setDefaultAxisName(tr("R Trigger"));
+    const auto setAxisName = [this](int axisIndex, const QString &name) {
+        if (JoyAxis *axis = getJoyAxis(axisIndex))
+            axis->setDefaultAxisName(name);
+    };
+    setAxisName(SDL_CONTROLLER_AXIS_TRIGGERLEFT, tr("L Trigger"));
+    setAxisName(SDL_CONTROLLER_AXIS_TRIGGERRIGHT, tr("R Trigger"));
 }
 
 template <typename T> void readConf(T *x, QXmlStreamReader *xml)
@@ -169,15 +193,25 @@ void GameControllerSet::getElemFromXml(const QString &elemName, QXmlStreamReader
     if (elemName == "button")
     {
         JoyButton *button = getJoyButton(index - 1);
-        JoyButtonXml *joyButtonXml = new JoyButtonXml(button, this);
-        readConf(joyButtonXml, xml);
+        if (button != nullptr)
+        {
+            JoyButtonXml *joyButtonXml = new JoyButtonXml(button, this);
+            readConf(joyButtonXml, xml);
+        } else
+        {
+            xml->skipCurrentElement();
+        }
     } else if (elemName == "dpad")
     {
         GameControllerDPad *vdpad = qobject_cast<GameControllerDPad *>(getVDPad(index - 1));
-        JoyDPadXml<GameControllerDPad> *dpadXml = new JoyDPadXml<GameControllerDPad>(vdpad);
-        readConf(dpadXml, xml);
-
-        // if (!dpadXml.isNull()) delete dpadXml;
+        if (vdpad != nullptr)
+        {
+            JoyDPadXml<GameControllerDPad> *dpadXml = new JoyDPadXml<GameControllerDPad>(vdpad);
+            readConf(dpadXml, xml);
+        } else
+        {
+            xml->skipCurrentElement();
+        }
     } else if (elemName == "trigger")
     {
         GameControllerTrigger *axis = nullptr;
@@ -188,27 +222,55 @@ void GameControllerSet::getElemFromXml(const QString &elemName, QXmlStreamReader
         // for older profiles
         case 0:
             axis = qobject_cast<GameControllerTrigger *>(getJoyAxis(SDL_CONTROLLER_AXIS_TRIGGERLEFT));
-            triggerAxisXml = new JoyAxisXml(axis, this);
-            readConf(triggerAxisXml, xml);
+            if (axis != nullptr)
+            {
+                triggerAxisXml = new JoyAxisXml(axis, this);
+                readConf(triggerAxisXml, xml);
+            } else
+            {
+                xml->skipCurrentElement();
+            }
             break;
 
         // for older profiles
         case 1:
             axis = qobject_cast<GameControllerTrigger *>(getJoyAxis(SDL_CONTROLLER_AXIS_TRIGGERRIGHT));
-            triggerAxisXml = new JoyAxisXml(axis, this);
-            readConf(triggerAxisXml, xml);
+            if (axis != nullptr)
+            {
+                triggerAxisXml = new JoyAxisXml(axis, this);
+                readConf(triggerAxisXml, xml);
+            } else
+            {
+                xml->skipCurrentElement();
+            }
             break;
 
         case 4:
             axis = qobject_cast<GameControllerTrigger *>(getJoyAxis(SDL_CONTROLLER_AXIS_TRIGGERLEFT));
-            triggerAxisXml = new JoyAxisXml(axis, this);
-            readConf(triggerAxisXml, xml);
+            if (axis != nullptr)
+            {
+                triggerAxisXml = new JoyAxisXml(axis, this);
+                readConf(triggerAxisXml, xml);
+            } else
+            {
+                xml->skipCurrentElement();
+            }
             break;
 
         case 5:
             axis = qobject_cast<GameControllerTrigger *>(getJoyAxis(SDL_CONTROLLER_AXIS_TRIGGERRIGHT));
-            triggerAxisXml = new JoyAxisXml(axis, this);
-            readConf(triggerAxisXml, xml);
+            if (axis != nullptr)
+            {
+                triggerAxisXml = new JoyAxisXml(axis, this);
+                readConf(triggerAxisXml, xml);
+            } else
+            {
+                xml->skipCurrentElement();
+            }
+            break;
+
+        default:
+            xml->skipCurrentElement();
             break;
         }
     } else if (elemName == "stick")
