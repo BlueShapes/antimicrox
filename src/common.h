@@ -23,6 +23,7 @@
 #include "antimicrosettings.h"
 #include "config.h"
 #include "mousehelper.h"
+#include "productidentity.h"
 
 #include <QDir>
 #include <QIcon>
@@ -37,8 +38,9 @@
 static QString findWinSystemConfigPath()
 {
     QString temp;
-    temp = (!qgetenv("LocalAppData").isEmpty()) ? QString::fromUtf8(qgetenv("LocalAppData")) + "\\antimicrox"
-                                                : QDir::homePath() + "\\.antimicrox";
+    temp = (!qgetenv("LocalAppData").isEmpty())
+               ? QString::fromUtf8(qgetenv("LocalAppData")) + "\\" + ProductIdentity::configDirectoryName
+               : QDir::homePath() + "\\." + ProductIdentity::configDirectoryName;
     return temp;
 }
 
@@ -70,12 +72,13 @@ inline QString configPath()
 #elif defined(Q_OS_WIN)
     return findWinSystemConfigPath();
 #else
-    return (!qgetenv("XDG_CONFIG_HOME").isEmpty()) ? QString::fromUtf8(qgetenv("XDG_CONFIG_HOME")) + "/antimicrox"
-                                                   : QDir::homePath() + "/.config/antimicrox";
+    return (!qgetenv("XDG_CONFIG_HOME").isEmpty())
+               ? QString::fromUtf8(qgetenv("XDG_CONFIG_HOME")) + "/" + ProductIdentity::configDirectoryName
+               : QDir::homePath() + "/.config/" + ProductIdentity::configDirectoryName;
 #endif
 }
 
-const QString configFileName = "antimicrox_settings.ini";
+inline const QString configFileName = ProductIdentity::configFileName;
 inline QString configFilePath()
 {
 #if defined(Q_OS_WIN) && defined(WIN_PORTABLE_PACKAGE)
@@ -84,6 +87,23 @@ inline QString configFilePath()
     return QString(configPath()).append("\\").append(configFileName);
 #else
     return QString(configPath()).append("/").append(configFileName);
+#endif
+}
+
+inline QString configPreviousForkFilePath()
+{
+#if defined(Q_OS_WIN) && defined(WIN_PORTABLE_PACKAGE)
+    return QDir(findWinLocalConfigPath()).filePath(QStringLiteral("antimicrox_settings.ini"));
+#elif defined(Q_OS_WIN)
+    const QString directory = !qgetenv("LocalAppData").isEmpty()
+                                  ? QString::fromUtf8(qgetenv("LocalAppData")) + QStringLiteral("\\antimicrox")
+                                  : QDir::homePath() + QStringLiteral("\\.antimicrox");
+    return QDir(directory).filePath(QStringLiteral("antimicrox_settings.ini"));
+#else
+    const QString directory = !qgetenv("XDG_CONFIG_HOME").isEmpty()
+                                  ? QString::fromUtf8(qgetenv("XDG_CONFIG_HOME")) + QStringLiteral("/antimicrox")
+                                  : QDir::homePath() + QStringLiteral("/.config/antimicrox");
+    return QDir(directory).filePath(QStringLiteral("antimicrox_settings.ini"));
 #endif
 }
 
@@ -103,8 +123,10 @@ inline QString configLegacyFilePath()
 inline QString configAntimicroLegacyFilePath()
 {
 #if defined(Q_OS_WIN)
-    QString temp = configFilePath().replace("antimicrox", "antimicro").replace("/", "\\");
-    return temp;
+    const QString directory = !qgetenv("LocalAppData").isEmpty()
+                                  ? QString::fromUtf8(qgetenv("LocalAppData")) + QStringLiteral("\\antimicro")
+                                  : QDir::homePath() + QStringLiteral("\\.antimicro");
+    return QDir(directory).filePath(QStringLiteral("antimicro_settings.ini"));
 #else
     QString configPath = (!qgetenv("XDG_CONFIG_HOME").isEmpty())
                              ? QString::fromUtf8(qgetenv("XDG_CONFIG_HOME")) + "/antimicro"
@@ -117,25 +139,22 @@ const int LATESTCONFIGFILEVERSION = 19;
 // Specify the last known profile version that requires a migration
 // to be performed in order to be compatible with the latest version.
 const int LATESTCONFIGMIGRATIONVERSION = 5;
-const QString localSocketKey = "antimicroxSignalListener";
+inline const QString localSocketKey = ProductIdentity::localSocketKey;
 const QString unhideCommand = "unhideWindow";
-const QString githubProjectPage = "https://github.com/AntiMicroX/antimicrox/";
-const QString githubIssuesPage = "https://github.com/AntiMicroX/antimicrox/issues";
-const QString wikiPage = QString("%1/wiki").arg(githubProjectPage);
+inline const QString githubProjectPage = ProductIdentity::projectUrl;
+inline const QString githubIssuesPage = ProductIdentity::issuesUrl;
+inline const QString wikiPage = ProductIdentity::wikiUrl;
 
-const QString mouseDeviceName("antimicrox Mouse Emulation");
-const QString keyboardDeviceName("antimicrox Keyboard Emulation");
-const QString springMouseDeviceName("antimicrox Abs Mouse Emulation");
+const QString mouseDeviceName("AntiMicroX-Delta Mouse Emulation");
+const QString keyboardDeviceName("AntiMicroX-Delta Keyboard Emulation");
+const QString springMouseDeviceName("AntiMicroX-Delta Abs Mouse Emulation");
 
 const int ANTIMICROX_MAJOR_VERSION = PROJECT_MAJOR_VERSION;
 const int ANTIMICROX_MINOR_VERSION = PROJECT_MINOR_VERSION;
 const int ANTIMICROX_PATCH_VERSION = PROJECT_PATCH_VERSION;
 const QString ANTIMICROX_PRERELEASE_VERSION = QStringLiteral(PROJECT_PRERELEASE_VERSION);
 
-const QString programVersion =
-    QString("%1.%2.%3").arg(ANTIMICROX_MAJOR_VERSION).arg(ANTIMICROX_MINOR_VERSION).arg(ANTIMICROX_PATCH_VERSION)
-    + (ANTIMICROX_PRERELEASE_VERSION.isEmpty() ? QString()
-                                               : QStringLiteral("-") + ANTIMICROX_PRERELEASE_VERSION)
+const QString programVersion = ProductIdentity::version
 #ifdef QT_DEBUG
     + "-d"
 #endif

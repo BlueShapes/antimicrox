@@ -26,7 +26,7 @@ int WinExtras::originalMouseAccel = 0;
 
 static const QString ROOTASSOCIATIONKEY("HKEY_CURRENT_USER\\Software\\Classes");
 static const QString FILEASSOCIATIONKEY(QString("%1\\%2").arg(ROOTASSOCIATIONKEY).arg(".amgp"));
-static const QString PROGRAMASSOCIATIONKEY(QString("%1\\%2").arg(ROOTASSOCIATIONKEY).arg("AntiMicro.amgp"));
+static const QString PROGRAMASSOCIATIONKEY(QString("%1\\%2").arg(ROOTASSOCIATIONKEY).arg("AntiMicroXDelta.amgp"));
 
 WinExtras WinExtras::_instance;
 
@@ -297,11 +297,11 @@ bool WinExtras::containsFileAssociationinRegistry()
 void WinExtras::writeFileAssocationToRegistry()
 {
     QSettings fileAssociationReg(FILEASSOCIATIONKEY, QSettings::NativeFormat);
-    fileAssociationReg.setValue("Default", "AntiMicro.amgp");
+    fileAssociationReg.setValue("Default", "AntiMicroXDelta.amgp");
     fileAssociationReg.sync();
 
     QSettings programAssociationReg(PROGRAMASSOCIATIONKEY, QSettings::NativeFormat);
-    programAssociationReg.setValue("Default", tr("AntiMicro Profile"));
+    programAssociationReg.setValue("Default", tr("AntiMicroX-Delta Profile"));
     programAssociationReg.setValue(
         "shell/open/command/Default",
         QString("\"%1\" \"%2\"").arg(QDir::toNativeSeparators(qApp->applicationFilePath())).arg("%1"));
@@ -317,7 +317,7 @@ void WinExtras::removeFileAssociationFromRegistry()
 {
     QSettings fileAssociationReg(FILEASSOCIATIONKEY, QSettings::NativeFormat);
     QString currentValue = fileAssociationReg.value("Default", "").toString();
-    if (currentValue == "AntiMicro.amgp")
+    if (currentValue == "AntiMicroXDelta.amgp")
     {
         fileAssociationReg.remove("Default");
         fileAssociationReg.sync();

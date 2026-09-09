@@ -38,6 +38,7 @@ AboutDialog::AboutDialog(QWidget *parent)
     , ui(new Ui::AboutDialog)
 {
     ui->setupUi(this);
+    ui->titleLabel->setText(ProductIdentity::displayName);
     ui->versionLabel->setText(PadderCommon::programVersion);
     fillInfoTextBrowser();
 }
@@ -49,6 +50,8 @@ void AboutDialog::fillInfoTextBrowser()
     QStringList finalInfoText = QStringList();
 
     finalInfoText.append(tr("Program Version %1").arg(PadderCommon::programVersion));
+    finalInfoText.append(tr("Based on upstream AntiMicroX %1").arg(ProductIdentity::upstreamBaseVersion));
+    finalInfoText.append(tr("Independent GPLv3 project maintained at %1").arg(ProductIdentity::projectUrl));
 #ifdef ANTIMICROX_PKG_VERSION
     finalInfoText.append(tr("Compiled from packaging: %1").arg(ANTIMICROX_PKG_VERSION));
 #else
@@ -119,5 +122,6 @@ void AboutDialog::retranslateUi()
 {
     ui->retranslateUi(this);
 
+    ui->titleLabel->setText(ProductIdentity::displayName);
     ui->versionLabel->setText(PadderCommon::programVersion);
 }

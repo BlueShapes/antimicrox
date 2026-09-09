@@ -31,6 +31,7 @@
 #include "localantimicroserver.h"
 #include "mainwindow.h"
 #include "setjoystick.h"
+#include "settingsmigration.h"
 
 #include "eventhandlerfactory.h"
 #include "logger.h"
@@ -175,60 +176,48 @@ static void deleteInputDevices(QMap<SDL_JoystickID, InputDevice *> *joysticks)
 }
 
 /**
- * @brief Function used for copying settings used by antimicro and
- * previous revisions of antimicrox to provide backward compatibility
+ * @brief Copy settings from earlier AntiMicro/AntiMicroX variants once.
+ *
+ * The source is never moved or modified, so Delta and upstream installations
+ * can subsequently be configured independently.
  */
 void importLegacySettingsIfExist()
 {
-    const QFileInfo config(PadderCommon::configFilePath());
-    const bool configExists = config.exists() && config.isFile();
-    if (configExists)
+    const SettingsMigration::Outcome outcome = SettingsMigration::copyFirstAvailable(
+        {PadderCommon::configPreviousForkFilePath(), PadderCommon::configLegacyFilePath(),
+         PadderCommon::configAntimicroLegacyFilePath()},
+        PadderCommon::configFilePath());
+    if (outcome.result == SettingsMigration::Result::DestinationExists)
     {
         DEBUG() << "Found settings file: " << PadderCommon::configFilePath();
         return;
     }
-    // 'antimicroX'
-    const QFileInfo legacyConfig(PadderCommon::configLegacyFilePath());
-    const bool legacyConfigExists = legacyConfig.exists() && legacyConfig.isFile();
-    // 'antimicro'
-    const QFileInfo legacyAntimicroConfig(PadderCommon::configAntimicroLegacyFilePath());
-    const bool legacyAntimicroConfigExists = legacyAntimicroConfig.exists() && legacyAntimicroConfig.isFile();
+    if (outcome.result == SettingsMigration::Result::NoSource)
+        return;
 
-    const bool requireMigration = !configExists && (legacyConfigExists || legacyAntimicroConfigExists);
-    if (requireMigration)
+    const QString location = PadderCommon::configPath();
+    DEBUG() << "Legacy settings found";
+    const QString successMessage =
+        QObject::tr("Your original settings (previously stored in %1) have been copied to\n%2\n If you want you can "
+                    "delete the original directory or leave it as it is.")
+            .arg(outcome.sourcePath, location);
+    const QString errorMessage =
+        QObject::tr("Some problem with settings migration occurred.\nOriginal configs are stored in \n%1\n but their "
+                    "new location is: \n%2\nYou can migrate manually by copying the old settings file to %3.")
+            .arg(outcome.sourcePath, location, PadderCommon::configFileName);
+
+    QMessageBox msgBox;
+    if (outcome.result == SettingsMigration::Result::Copied)
     {
-        const QFileInfo fileToCopy = legacyConfigExists ? legacyConfig : legacyAntimicroConfig;
-#if defined(Q_OS_WIN)
-        const QString location = PadderCommon::configPath();
-#else
-        const QString location = "~/.config/antimicrox";
-#endif
-        QDir(PadderCommon::configPath()).mkpath(PadderCommon::configPath());
-        const bool copySuccess = QFile::copy(fileToCopy.canonicalFilePath(), PadderCommon::configFilePath());
-        DEBUG() << "Legacy settings found";
-        const QString successMessage =
-            QObject::tr("Your original settings (previously stored in %1) have been copied to\n%2\n If you want you can "
-                        "delete the original directory or leave it as it is.")
-                .arg(fileToCopy.canonicalFilePath(), location);
-        const QString errorMessage =
-            QObject::tr("Some problem with settings migration occurred.\nOriginal configs are stored in \n%1\n but their "
-                        "new location is: \n%2\nYou can migrate manually by renaming old directory and renaming file to "
-                        "antimicrox_settings.ini.")
-                .arg(fileToCopy.canonicalFilePath(), location);
-
-        QMessageBox msgBox;
-        if (copySuccess)
-        {
-            DEBUG() << "Legacy settings copied";
-            msgBox.setText(successMessage);
-        } else
-        {
-            WARN() << "Problem with importing settings from: " << fileToCopy.canonicalFilePath()
-                   << " to: " << PadderCommon::configFilePath();
-            msgBox.setText(errorMessage);
-        }
-        msgBox.exec();
+        DEBUG() << "Legacy settings copied";
+        msgBox.setText(successMessage);
+    } else
+    {
+        WARN() << "Problem with importing settings from: " << outcome.sourcePath
+               << " to: " << PadderCommon::configFilePath();
+        msgBox.setText(errorMessage);
     }
+    msgBox.exec();
 }
 
 int main(int argc, char *argv[])
@@ -236,11 +225,11 @@ int main(int argc, char *argv[])
     if (ApplicationSecurityPolicy::current().mustRefuseStartup())
     {
 #ifdef Q_OS_WIN
-        MessageBoxW(nullptr, L"AntiMicroX cannot run with Administrator privileges. Restart it as a standard user. "
+        MessageBoxW(nullptr, L"AntiMicroX-Delta cannot run with Administrator privileges. Restart it as a standard user. "
                              L"If elevation status cannot be verified, it is refused for your safety.",
                     L"Elevated execution is not supported", MB_OK | MB_ICONERROR);
 #else
-        std::cerr << "AntiMicroX cannot run with root privileges. Restart it as a standard user.\n";
+        std::cerr << "AntiMicroX-Delta cannot run with root privileges. Restart it as a standard user.\n";
 #endif
         return EXIT_FAILURE;
     }
@@ -252,7 +241,9 @@ int main(int argc, char *argv[])
     qInstallMessageHandler(Logger::loggerMessageHandler);
 
     QApplication antimicrox(argc, argv);
-    QCoreApplication::setApplicationName("antimicrox");
+    QCoreApplication::setOrganizationName(QStringLiteral("BlueShapes"));
+    QCoreApplication::setApplicationName(ProductIdentity::applicationName);
+    QGuiApplication::setApplicationDisplayName(ProductIdentity::displayName);
     QCoreApplication::setApplicationVersion(PadderCommon::programVersion);
 
     QTextStream outstream(stdout);
@@ -324,16 +315,16 @@ int main(int argc, char *argv[])
         {
             if (socket.error() == QLocalSocket::ServerNotFoundError)
             {
-                qDebug() << "No existing AntiMicroX signal server was found.";
+                qDebug() << "No existing AntiMicroX-Delta signal server was found.";
             } else if (socket.error() == QLocalSocket::SocketAccessError)
             {
-                qWarning() << "Access to the existing AntiMicroX signal server was denied.";
+                qWarning() << "Access to the existing AntiMicroX-Delta signal server was denied.";
 #if defined(Q_OS_WIN)
                 qWarning() << "This may indicate an incompatible server created across a Windows UAC boundary.";
 #endif
             } else
             {
-                qWarning() << "Could not connect to the existing AntiMicroX signal server.";
+                qWarning() << "Could not connect to the existing AntiMicroX-Delta signal server.";
             }
             qDebug() << "Socket's state: " << socket.state();
             qDebug() << "Server name: " << socket.serverName();
@@ -360,7 +351,7 @@ int main(int argc, char *argv[])
     {
         // An instance of this program is already running.
         // Save app config and exit.
-        PRINT_STDOUT() << "AntiMicroX is already running.\n";
+        PRINT_STDOUT() << "AntiMicroX-Delta is already running.\n";
         QPointer<InputDaemon> joypad_worker = new InputDaemon(joysticks, &settings, false);
         MainWindow mainWindow(joysticks, &cmdutility, &settings, false);
         mainWindow.fillButtons();
@@ -459,7 +450,7 @@ int main(int argc, char *argv[])
 
 #if defined(Q_OS_UNIX)
     // Ensure that the Wayland appId matches the .desktop file name
-    QGuiApplication::setDesktopFileName("io.github.antimicrox.antimicrox");
+    QGuiApplication::setDesktopFileName(ProductIdentity::desktopId);
 
     installSignalHandlers();
 
@@ -467,7 +458,7 @@ int main(int argc, char *argv[])
 
     if (QDir(transPath).entryInfoList(QDir::NoDotAndDotDot | QDir::AllEntries).count() == 0)
     {
-        qtTranslator.load(QString("qt_").append(targetLang), "/app/share/antimicrox/translations");
+        qtTranslator.load(QString("qt_").append(targetLang), "/app/share/antimicrox-delta/translations");
     } else
     {
         qtTranslator.load(QString("qt_").append(targetLang), transPath);
@@ -478,13 +469,13 @@ int main(int argc, char *argv[])
 
     QTranslator myappTranslator;
 
-    if (QDir("/app/share/antimicrox").entryInfoList(QDir::NoDotAndDotDot | QDir::AllEntries).count() > 0)
+    if (QDir("/app/share/antimicrox-delta").entryInfoList(QDir::NoDotAndDotDot | QDir::AllEntries).count() > 0)
     {
-        myappTranslator.load(QString("antimicrox_").append(targetLang), "app/share/antimicrox/translations");
+        myappTranslator.load(QString("antimicrox_").append(targetLang), "app/share/antimicrox-delta/translations");
     } else
     {
         myappTranslator.load(QString("antimicrox_").append(targetLang),
-                             QApplication::applicationDirPath().append("/../share/antimicrox/translations"));
+                             QApplication::applicationDirPath().append("/../share/antimicrox-delta/translations"));
     }
 
     antimicrox.installTranslator(&myappTranslator);
@@ -644,7 +635,7 @@ int main(int argc, char *argv[])
     inputEventThread->start(QThread::HighPriority);
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0) && defined(Q_OS_UNIX)
     QDBusConnection connection = QDBusConnection::sessionBus();
-    QString dbusServiceName = QStringLiteral("io.github.antimicrox");
+    const QString dbusServiceName = ProductIdentity::dbusService;
     if (!connection.registerService(dbusServiceName))
     {
         qWarning("Failed to register service %s on session bus. "

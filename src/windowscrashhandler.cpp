@@ -96,7 +96,7 @@ bool appendPathComponent(wchar_t (&path)[pathCapacity], const wchar_t *component
 bool pruneOldCrashDumps(const wchar_t *directory) noexcept
 {
     wchar_t searchPattern[pathCapacity] = {};
-    if (FAILED(StringCchPrintfW(searchPattern, pathCapacity, L"%s\\antimicrox-crash-*.dmp", directory)))
+    if (FAILED(StringCchPrintfW(searchPattern, pathCapacity, L"%s\\antimicrox-delta-crash-*.dmp", directory)))
         return false;
 
     for (;;)
@@ -157,7 +157,7 @@ bool selectDefaultDirectory(wchar_t (&directory)[pathCapacity]) noexcept
 #else
     DWORD length = GetEnvironmentVariableW(L"LOCALAPPDATA", directory, static_cast<DWORD>(pathCapacity));
     if (length > 0 && length < pathCapacity - reservedFilenameCharacters
-        && appendPathComponent(directory, L"antimicrox") && appendPathComponent(directory, L"crashes"))
+        && appendPathComponent(directory, L"antimicrox-delta") && appendPathComponent(directory, L"crashes"))
     {
         return true;
     }
@@ -165,7 +165,7 @@ bool selectDefaultDirectory(wchar_t (&directory)[pathCapacity]) noexcept
     length = GetTempPathW(static_cast<DWORD>(pathCapacity), directory);
     if (length == 0 || length >= pathCapacity - reservedFilenameCharacters)
         return false;
-    return appendPathComponent(directory, L"antimicrox-crashes");
+    return appendPathComponent(directory, L"antimicrox-delta-crashes");
 #endif
 }
 
@@ -181,7 +181,7 @@ bool writeMiniDump(EXCEPTION_POINTERS *exceptionPointers) noexcept
 
     bool dumpWritten = false;
     const HRESULT formatResult = StringCchPrintfW(
-        dumpPath, pathCapacity, L"%s\\antimicrox-crash-%04u%02u%02u-%02u%02u%02u-%03u-%lu-%ld.dmp", crashDirectory,
+        dumpPath, pathCapacity, L"%s\\antimicrox-delta-crash-%04u%02u%02u-%02u%02u%02u-%03u-%lu-%ld.dmp", crashDirectory,
         timestamp.wYear, timestamp.wMonth, timestamp.wDay, timestamp.wHour, timestamp.wMinute, timestamp.wSecond,
         timestamp.wMilliseconds, static_cast<unsigned long>(processId), static_cast<long>(sequence));
 

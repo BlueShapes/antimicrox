@@ -1,5 +1,70 @@
 # Changelog
 
+## [1.0.0](https://github.com/BlueShapes/antimicrox/tree/v1.0.0) (2026-09-09)
+
+First independently versioned AntiMicroX-Delta release. The application remains
+based on upstream AntiMicroX 3.6.1 and preserves `.amgp` profile compatibility.
+
+**Identity and migration:**
+
+- Rename the public product, executable, packages, desktop/AppStream metadata, IPC endpoints, crash dumps, and settings storage to AntiMicroX-Delta identifiers.
+- Start the independent Delta version series at 1.0.0 and use `v1.0.0` release tags.
+- Copy existing AntiMicroX settings once on first launch without modifying or sharing the upstream settings file.
+- Point update checks, help links, issue reports, and release metadata to the BlueShapes repository.
+- Preserve upstream copyright and GPLv3 notices and identify the application as an independently maintained derivative.
+
+**CI:**
+
+- Replace deprecated Node.js 20 Actions with current Node.js 24 releases pinned to immutable commit SHAs.
+- Add product identity and release-tag tests to the CI and release gates.
+
+This release also includes all fork changes first distributed in the
+transitional 3.7.0 release, making the following the complete user-facing Delta
+from upstream AntiMicroX 3.6.1.
+
+**Security:**
+
+- Refuse elevated and indeterminate-elevation process starts on Windows and root starts on Unix-like systems; remove the in-app elevation action.
+- Reject controller profiles larger than 16 MiB, DTD declarations, non-regular files, and files changed while being read.
+- Safely skip missing or incompatible controller controls instead of dereferencing invalid profile elements.
+- Publish only an installer on Windows; do not publish Portable archives whose DLLs load before the application can enforce its security policy.
+- Pin third-party Actions and release dependencies, and verify downloaded executable dependencies with SHA-256 digests.
+
+**Automatic profiles:**
+
+- Enable and synchronize automatic profiles during startup on Windows and X11.
+- Add a status banner and pause/resume control to each controller tab, temporarily protecting manual profile and set changes from automatic switching.
+- Add profile selection from preferred folders and recently used profiles to the automatic-profile editor.
+- Capture the full executable path on Windows, reliably foreground the capture dialog, and use a 3-second default timed capture with a 15-second maximum.
+- Avoid reloading an automatic profile when that profile is already active.
+
+**Controllers, input, and mouse:**
+
+- Add persistent per-controller input enable/disable controls, release held outputs on disable, and combine input from multiple enabled controllers.
+- Release old outputs synchronously and reset mouse acceleration state when changing profiles or sets.
+- Prevent duplicate mouse contributors from multiplying cursor speed after profile reinitialization.
+- Keep Windows timer precision active while minimized or in the system tray.
+- Prevent duplicate instances across Windows UAC boundaries and stop before input processing if the single-instance signal server cannot be established.
+- Add clearer diagnostics for Windows `SendInput` failures and restore the missing decimal-point key on the virtual numeric keyboard.
+
+**Crash reporting and logs:**
+
+- Keep durable append-only logs bounded to 8 MiB while preserving the newest complete UTF-8 records.
+- Flush completed log records so sudden termination is less likely to lose the final diagnostics.
+- Generate Windows minidumps for unhandled exceptions, `std::terminate`, and application-owned Qt fatal paths, retaining up to five dumps.
+- Avoid blocking indefinitely in the MSVC abort path or on the logger lock during fatal termination.
+
+  Minidump generation is best effort: severe process corruption or failures while
+  the Windows loader lock is held can prevent a dump, and a fatal message itself
+  may not always reach the log.
+
+**UI, packaging, and release engineering:**
+
+- Open the About dialog's Changelog link in the external browser, improve the Advanced settings warning, and add `gamepad` to Linux desktop search keywords.
+- Build official Windows and AppImage artifacts with Qt 6.10.2 while retaining Qt 5 compatibility CI.
+- Bundle the Qt platform plugin and required non-system runtime DLLs in the Windows installer.
+- Preserve prerelease suffixes in CMake/CPack versions and artifact names.
+
 ## [3.7.0](https://github.com/BlueShapes/antimicrox/tree/3.7.0) (2026-09-08)
 
 This release is based on upstream AntiMicroX 3.6.1 and includes the following

@@ -20,10 +20,10 @@
    </size>
   </property>
   <property name="windowTitle">
-   <string>AntiMicroX</string>
+   <string>AntiMicroX-Delta</string>
   </property>
   <property name="windowIcon">
-   <iconset theme="io.github.antimicrox.antimicrox">
+   <iconset theme="io.github.blueshapes.antimicrox_delta">
     <normaloff>.</normaloff>.</iconset>
   </property>
   <property name="styleSheet">

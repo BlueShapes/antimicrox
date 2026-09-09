@@ -58,9 +58,18 @@ else()
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /W3 /GS /Od /sdl /wd4996 /RTC1 /Gd /Oy-  /permissive-")
 endif(NOT COMPILER_IS_MSVC)
 
-# The version number.
-set(ANTIMICROX_MAJOR_VERSION 3)
-set(ANTIMICROX_MINOR_VERSION 7)
+# Public product identity. The internal target name remains "antimicrox" to
+# avoid an invasive source-level rename; installed identifiers are Delta-only.
+set(ANTIMICROX_PRODUCT_NAME "AntiMicroX-Delta")
+set(ANTIMICROX_PRODUCT_SLUG "antimicrox-delta")
+set(ANTIMICROX_DESKTOP_ID "io.github.blueshapes.antimicrox_delta")
+set(ANTIMICROX_DBUS_SERVICE "io.github.blueshapes.AntiMicroXDelta")
+set(ANTIMICROX_UPSTREAM_BASE_VERSION "3.6.1")
+set(ANTIMICROX_PROJECT_URL "https://github.com/BlueShapes/antimicrox/")
+
+# The independent Delta version number.
+set(ANTIMICROX_MAJOR_VERSION 1)
+set(ANTIMICROX_MINOR_VERSION 0)
 set(ANTIMICROX_PATCH_VERSION 0)
 set(ANTIMICROX_PRERELEASE_VERSION "")
 
@@ -142,6 +151,8 @@ set(antimicrox_MAIN src/main.cpp)
 
 set(antimicrox_SOURCES
         src/applicationsecuritypolicy.cpp
+        src/productidentity.cpp
+        src/settingsmigration.cpp
         src/profilexmlsafety.cpp
         src/antimicrosettings.cpp
         src/antkeymapper.cpp
@@ -276,6 +287,8 @@ set(antimicrox_SOURCES
 
 set(antimicrox_HEADERS
         src/applicationsecuritypolicy.h
+        src/productidentity.h
+        src/settingsmigration.h
         src/antimicrosettings.h
         src/antkeymapper.h
         src/profilefilesizepolicy.h
@@ -677,6 +690,8 @@ target_include_directories(antimicrox PUBLIC
         ${SDL2_INCLUDE_DIRS}/SDL2
         )
 
+set_target_properties(antimicrox PROPERTIES OUTPUT_NAME "${ANTIMICROX_PRODUCT_SLUG}")
+
 ###############################
 # INSTALL
 ###############################
@@ -685,27 +700,28 @@ target_include_directories(antimicrox PUBLIC
 install(TARGETS antimicrox RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
 
 if(UNIX)
-    find_package(ECM REQUIRED NO_MODULE)
-    set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${ECM_MODULE_DIR})
-    include(ECMInstallIcons)
+    foreach(ICON_SIZE 16 24 32 48 64 128)
+        install(FILES "share/icons/application/${ICON_SIZE}x${ICON_SIZE}/apps/${ICON_SIZE}-apps-io.github.antimicrox.antimicrox.png"
+                DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/${ICON_SIZE}x${ICON_SIZE}/apps"
+                RENAME "${ANTIMICROX_DESKTOP_ID}.png")
+    endforeach()
+    install(FILES share/icons/application/scalable/apps/sc-apps-io.github.antimicrox.antimicrox.svg
+            DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/scalable/apps"
+            RENAME "${ANTIMICROX_DESKTOP_ID}.svg")
+    install(FILES share/icons/breeze_themed/48-apps-io.github.antimicrox.antimicrox.trayicon.png
+            DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/breeze/48x48/apps"
+            RENAME "${ANTIMICROX_DESKTOP_ID}.trayicon.png")
 
-    ecm_install_icons(ICONS share/icons/application/16x16/apps/16-apps-io.github.antimicrox.antimicrox.png DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons)
-    ecm_install_icons(ICONS share/icons/application/24x24/apps/24-apps-io.github.antimicrox.antimicrox.png DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons)
-    ecm_install_icons(ICONS share/icons/application/32x32/apps/32-apps-io.github.antimicrox.antimicrox.png DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons)
-    ecm_install_icons(ICONS share/icons/application/48x48/apps/48-apps-io.github.antimicrox.antimicrox.png DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons)
-    ecm_install_icons(ICONS share/icons/application/64x64/apps/64-apps-io.github.antimicrox.antimicrox.png DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons)
-    ecm_install_icons(ICONS share/icons/application/128x128/apps/128-apps-io.github.antimicrox.antimicrox.png DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons)
-    ecm_install_icons(ICONS share/icons/application/scalable/apps/sc-apps-io.github.antimicrox.antimicrox.svg DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons)
-
-    ecm_install_icons(ICONS share/icons/breeze_themed/48-apps-io.github.antimicrox.antimicrox.trayicon.png DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons THEME breeze)
-    ecm_install_icons(ICONS src/images/48-apps-io.github.antimicrox.antimicrox.trayicon.png DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons)
-
-    install(FILES CHANGELOG.md DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/doc/antimicrox")
-    install(FILES other/io.github.antimicrox.antimicrox.desktop DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/applications")
-    install(FILES other/io.github.antimicrox.antimicrox.xml DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/mime/packages")
+    install(FILES CHANGELOG.md DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/doc/${ANTIMICROX_PRODUCT_SLUG}")
+    install(FILES other/io.github.antimicrox.antimicrox.desktop
+            DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/applications"
+            RENAME "${ANTIMICROX_DESKTOP_ID}.desktop")
+    install(FILES other/io.github.antimicrox.antimicrox.xml
+            DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/mime/packages"
+            RENAME "${ANTIMICROX_DESKTOP_ID}.xml")
 
     # Copy current Changelog file to location that the resource file expects.
-    install(FILES CHANGELOG.md DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/antimicrox")
+    install(FILES CHANGELOG.md DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/${ANTIMICROX_PRODUCT_SLUG}")
 endif(UNIX)
 
 # Add man page for *nix platforms.
@@ -845,6 +861,7 @@ configure_file(
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/CHANGELOG.md DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/src/)
 
 if(BUILD_TESTING)
+    add_subdirectory(tests/productidentity)
     add_subdirectory(tests/securitypolicy)
     add_subdirectory(tests/crashlogging)
 endif(BUILD_TESTING)
@@ -855,11 +872,12 @@ endif(WITH_TESTS)
 
 # Install SDL database with linked License file
 if(UNIX)
-    install(FILES share/gamecontrollerdb_linux.txt DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/antimicrox/" RENAME gamecontrollerdb.txt)
+    install(FILES share/gamecontrollerdb_linux.txt DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/${ANTIMICROX_PRODUCT_SLUG}/" RENAME gamecontrollerdb.txt)
 elseif(WIN32)
-    install(FILES share/gamecontrollerdb_windows.txt DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/antimicrox/" RENAME gamecontrollerdb.txt)
+    install(FILES share/gamecontrollerdb_windows.txt DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/${ANTIMICROX_PRODUCT_SLUG}/" RENAME gamecontrollerdb.txt)
 endif(UNIX)
-install(FILES share/LICENSE_SDL_GameControllerDB DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/antimicrox/")
+install(FILES share/LICENSE_SDL_GameControllerDB DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/${ANTIMICROX_PRODUCT_SLUG}/")
+install(FILES LICENSE DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/doc/${ANTIMICROX_PRODUCT_SLUG}")
 
 ###############################
 # PACKAGES BUILDING WITH CPACK
@@ -869,7 +887,9 @@ include(InstallRequiredSystemLibraries)
 
 
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Program used to map keyboard keys and mouse controls to a gamepad.")
-set(CPACK_PACKAGE_HOMEPAGE_URL "https://github.com/AntiMicroX/antimicrox/")
+set(CPACK_PACKAGE_NAME "${ANTIMICROX_PRODUCT_SLUG}")
+set(CPACK_PACKAGE_VENDOR "BlueShapes contributors")
+set(CPACK_PACKAGE_HOMEPAGE_URL "${ANTIMICROX_PROJECT_URL}")
 
 
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
@@ -889,7 +909,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(CPACK_PACKAGE_VERSION "${CPACK_PACKAGE_VERSION}-dbg")
 endif()
 
-set(CPACK_PACKAGE_FILE_NAME "antimicrox-${ANTIMICROX_VERSION}")
+set(CPACK_PACKAGE_FILE_NAME "${ANTIMICROX_PRODUCT_SLUG}-${ANTIMICROX_VERSION}")
 if(WIN32)
     if(PORTABLE_WIN)
         set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_FILE_NAME}-PortableWindows")
@@ -899,7 +919,7 @@ if(WIN32)
 endif(WIN32)
 set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_FILE_NAME}-${CMAKE_HOST_SYSTEM_PROCESSOR}")
 
-set(CPACK_PACKAGE_INSTALL_DIRECTORY "AntiMicroX")
+set(CPACK_PACKAGE_INSTALL_DIRECTORY "${ANTIMICROX_PRODUCT_NAME}")
 
 if(UNIX)
     set(CPACK_STRIP_FILES "")
@@ -915,9 +935,9 @@ if(CPACK_GENERATOR STREQUAL "DEB")
         set(CPACK_DEBIAN_PACKAGE_DEPENDS "libqt6widgets6 (>= ${QT_REQUIRED_VERSION}), libsdl2-2.0-0 (>= ${SDL_REQUIRED_VERSION}), libc6")
     endif(QT_VERSION_MAJOR EQUAL 5)
     set(CPACK_DEBIAN_PACKAGE_MAINTAINER "pktiuk <kotiuk@zohomail.eu>")
-    set(CPACK_DEBIAN_PACKAGE_DESCRIPTION "AntiMicroX is a graphical program used to map gamepad buttons to keyboard, mouse, scripts and macros.
+    set(CPACK_DEBIAN_PACKAGE_DESCRIPTION "AntiMicroX-Delta is a graphical program used to map gamepad buttons to keyboard, mouse, scripts and macros.
 
-It is a new fork of discontinued AntiMicro.")
+It is an independently maintained GPLv3 derivative based on AntiMicroX.")
 
     message("Preparing documentation for DEB package")
     add_custom_target(package_docummentation ALL)
@@ -925,11 +945,11 @@ It is a new fork of discontinued AntiMicro.")
     #Compress changelog and save it as share/doc/xournalpp/changelog.Debian.gz
     add_custom_command(TARGET package_docummentation PRE_BUILD
             COMMAND gzip -c -9 -n "${PROJECT_SOURCE_DIR}/CHANGELOG.md" > "changelog.gz" VERBATIM)
-    install(FILES "${CMAKE_CURRENT_BINARY_DIR}/changelog.gz" DESTINATION "share/doc/antimicrox/")
+    install(FILES "${CMAKE_CURRENT_BINARY_DIR}/changelog.gz" DESTINATION "share/doc/${ANTIMICROX_PRODUCT_SLUG}/")
 
     #Strip binaries from unnecessary notes, comments, etc
     add_custom_command(TARGET antimicrox POST_BUILD
-            COMMAND strip --strip-unneeded --remove-section=.comment --remove-section=.note "${CMAKE_CURRENT_BINARY_DIR}/bin/antimicrox" VERBATIM)
+            COMMAND strip --strip-unneeded --remove-section=.comment --remove-section=.note "${CMAKE_CURRENT_BINARY_DIR}/bin/${ANTIMICROX_PRODUCT_SLUG}" VERBATIM)
 endif()
 
 if(WIN32 AND NOT UNIX)
@@ -942,20 +962,20 @@ if(WIN32 AND NOT UNIX)
         set(CPACK_PACKAGE_ICON "${PROJECT_SOURCE_DIR}/src/images\\\\antimicrox.ico")
         set(CPACK_NSIS_MUI_ICON "${CPACK_PACKAGE_ICON}")
         set(CPACK_NSIS_MUI_UNIICON "${CPACK_PACKAGE_ICON}")
-        set(CPACK_NSIS_INSTALLED_ICON_NAME "bin/antimicrox.exe")
+        set(CPACK_NSIS_INSTALLED_ICON_NAME "bin/${ANTIMICROX_PRODUCT_SLUG}.exe")
 
-        set(CPACK_NSIS_DISPLAY_NAME "AntiMicroX")
-        set(CPACK_NSIS_PACKAGE_NAME "AntiMicroX")
-        set(CPACK_NSIS_HELP_LINK "http:\\\\\\\\github.com/AntiMicroX/antimicrox/wiki")
-        set(CPACK_NSIS_URL_INFO_ABOUT "http:\\\\\\\\github.com/AntiMicroX/antimicrox")
+        set(CPACK_NSIS_DISPLAY_NAME "${ANTIMICROX_PRODUCT_NAME}")
+        set(CPACK_NSIS_PACKAGE_NAME "${ANTIMICROX_PRODUCT_NAME}")
+        set(CPACK_NSIS_HELP_LINK "https:\\\\\\\\github.com/BlueShapes/antimicrox/wiki")
+        set(CPACK_NSIS_URL_INFO_ABOUT "https:\\\\\\\\github.com/BlueShapes/antimicrox")
         set(CPACK_NSIS_MODIFY_PATH ON)
     else()
         set(CPACK_GENERATOR ZIP)
     endif()
 endif()
 
-set(CPACK_PACKAGE_EXECUTABLES "antimicrox;AntiMicroX")
-set(CPACK_CREATE_DESKTOP_LINKS "antimicrox")
+set(CPACK_PACKAGE_EXECUTABLES "${ANTIMICROX_PRODUCT_SLUG};${ANTIMICROX_PRODUCT_NAME}")
+set(CPACK_CREATE_DESKTOP_LINKS "${ANTIMICROX_PRODUCT_SLUG}")
 include(CPack)
 
 if(WIN32 AND NOT UNIX AND NOT PORTABLE_WIN)

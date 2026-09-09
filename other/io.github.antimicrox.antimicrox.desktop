@@ -1,15 +1,15 @@
 [Desktop Entry]
-Name=AntiMicroX
+Name=AntiMicroX-Delta
 Comment=Use a gamepad to control a variety of programs
-Name[sr]=Анти-микро
+Name[sr]=AntiMicroX-Delta
 Comment[sr]=Користите џојстик или играћу тастатуру за управљање различитим програмима
-Name[fr]=AntiMicroX
+Name[fr]=AntiMicroX-Delta
 Comment[fr]=Utilisez une manette de jeu pour commander un logiciel
-Name[de]=AntiMicroX
+Name[de]=AntiMicroX-Delta
 Comment[de]=Nutze ein Gamepad, um Programme/Spiele zu steuern
 Comment[uk]=Використовуйте ігровий маніпулятор для керування програмами
-Exec=antimicrox --show %f
-Icon=io.github.antimicrox.antimicrox
+Exec=antimicrox-delta --show %f
+Icon=io.github.blueshapes.antimicrox_delta
 StartupNotify=true
 Terminal=false
 Type=Application
@@ -20,4 +20,4 @@ Actions=run-in-tray;
 
 [Desktop Action run-in-tray]
 Name=Open in system tray only
-Exec=antimicrox --tray
+Exec=antimicrox-delta --tray

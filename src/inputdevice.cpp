@@ -1773,7 +1773,7 @@ void InputDevice::registerDBusObject()
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0) && defined(Q_OS_UNIX)
     new InputDeviceAdaptor{this};
     QDBusConnection connection = QDBusConnection::sessionBus();
-    QString objectPath = QStringLiteral("/InputDevice/%1").arg(joyNumber);
+    const QString objectPath = ProductIdentity::dbusObjectPath + QStringLiteral("/%1").arg(joyNumber);
     if (!connection.registerObject(objectPath, this))
     {
         qWarning("Failed to register input device object at path %s on session bus", qUtf8Printable(objectPath));
@@ -1788,7 +1788,7 @@ void InputDevice::unregisterDBusObject()
 {
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0) && defined(Q_OS_UNIX)
     QDBusConnection connection = QDBusConnection::sessionBus();
-    QString objectPath = QStringLiteral("/InputDevice/%1").arg(joyNumber);
+    const QString objectPath = ProductIdentity::dbusObjectPath + QStringLiteral("/%1").arg(joyNumber);
     connection.unregisterObject(objectPath);
 #endif
 }

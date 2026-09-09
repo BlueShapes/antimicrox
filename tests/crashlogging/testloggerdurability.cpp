@@ -303,7 +303,7 @@ void testCrashDumpRetentionIsBounded()
     expect(directory.isValid(), "a temporary crash retention directory can be created");
     for (int index = 0; index < 7; ++index)
     {
-        const QString name = QStringLiteral("antimicrox-crash-retention-%1.dmp").arg(index);
+        const QString name = QStringLiteral("antimicrox-delta-crash-retention-%1.dmp").arg(index);
         expect(writeFile(directory.filePath(name), QByteArrayLiteral("old dump")), "an old crash dump can be prepared");
     }
     expect(writeFile(directory.filePath("unrelated.dmp"), QByteArrayLiteral("unrelated")),
@@ -313,7 +313,7 @@ void testCrashDumpRetentionIsBounded()
     expect(WindowsCrashHandler::install(nativeDirectory.c_str()), "crash handling can be installed for retention");
 
     QDir dumpDir(directory.path());
-    expect(dumpDir.entryList({QStringLiteral("antimicrox-crash-*.dmp")}, QDir::Files).size() <= 4,
+    expect(dumpDir.entryList({QStringLiteral("antimicrox-delta-crash-*.dmp")}, QDir::Files).size() <= 4,
            "startup retains room for one new dump within the five-dump limit");
     expect(QFile::exists(directory.filePath("unrelated.dmp")), "crash retention does not delete unrelated dumps");
 }

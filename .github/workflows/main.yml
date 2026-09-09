@@ -56,7 +56,7 @@ jobs:
         continue-on-error: ${{ matrix.experimental }}
 
         steps:
-            - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
             - name: Install Dependencies
               run: sudo apt-get update && sudo apt-get install extra-cmake-modules libsdl2-dev libxi-dev libxtst-dev libx11-dev itstool gettext ninja-build ${{ matrix.qt-packages }}
@@ -67,11 +67,11 @@ jobs:
                   CXX: ${{ matrix.cxx }}
                   CC: ${{ matrix.cc }}
 
-            - name: Build AntiMicroX
+            - name: Build AntiMicroX-Delta
               run: cmake --build ${{ github.workspace }}/build
 
-            - name: Run focused security and crash logging tests
-              run: ctest --test-dir ${{ github.workspace }}/build --output-on-failure -R "SecurityPolicyTests|CrashLoggingTests"
+            - name: Run focused identity, security, and crash logging tests
+              run: ctest --test-dir ${{ github.workspace }}/build --output-on-failure -R "ProductIdentityTests|SecurityPolicyTests|CrashLoggingTests"
 
     # Build job for Windows
     build-windows:
@@ -119,7 +119,7 @@ jobs:
                 shell:  ${{ matrix.shell }}
 
         steps:
-            - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
             - name: Install Dependencies (msys2)
               if: startsWith(matrix.shell, 'msys2')
@@ -150,7 +150,7 @@ jobs:
               
             - name: Install MSVC
               if: startsWith(matrix.shell, 'cmd')
-              uses: TheMrMilchmann/setup-msvc-dev@ced9887c29958f18f71b18c99d9eb0837859434c # v3
+              uses: TheMrMilchmann/setup-msvc-dev@368ef7d1ee4d1171b31d4a7f67f4d954f903f5a9 # v4.1.0
               with:
                 arch: x64
                 toolset: 14
@@ -174,5 +174,5 @@ jobs:
             - name: Build
               run: cmake --build "${{ github.workspace }}/build" --parallel 8
 
-            - name: Run focused security and crash logging tests
-              run: ctest --test-dir "${{ github.workspace }}/build" -C "${{ matrix.build-type }}" --output-on-failure -R "SecurityPolicyTests|CrashLoggingTests"
+            - name: Run focused identity, security, and crash logging tests
+              run: ctest --test-dir "${{ github.workspace }}/build" -C "${{ matrix.build-type }}" --output-on-failure -R "ProductIdentityTests|SecurityPolicyTests|CrashLoggingTests"

@@ -91,7 +91,8 @@ MainWindow::MainWindow(QMap<SDL_JoystickID, InputDevice *> *joysticks, CommandLi
 {
     ui->setupUi(this);
 
-    setWindowIcon(PadderCommon::loadIcon("antimicrox", ":/images/antimicrox.png"));
+    setWindowTitle(ProductIdentity::displayName);
+    setWindowIcon(PadderCommon::loadIcon(ProductIdentity::desktopId, ":/images/antimicrox.png"));
     ui->stackedWidget->setCurrentIndex(0);
 
     m_translator = nullptr;
@@ -191,7 +192,7 @@ MainWindow::MainWindow(QMap<SDL_JoystickID, InputDevice *> *joysticks, CommandLi
     ui->updateButton->setVisible(false);
 #ifdef CHECK_FOR_UPDATES
     connect(&m_network_manager, &QNetworkAccessManager::finished, this, &MainWindow::networkManagerFinished);
-    QNetworkRequest request(QUrl("https://api.github.com/repos/antimicrox/antimicrox/releases/latest"));
+    QNetworkRequest request(QUrl(ProductIdentity::releaseApiUrl));
     m_network_manager.get(request);
 #endif
 
@@ -624,7 +625,8 @@ void MainWindow::populateTrayIcon()
     trayIconMenu->addAction(updateJoy);
     trayIconMenu->addAction(closeAction);
 
-    QIcon icon = PadderCommon::loadIcon("io.github.antimicrox.antimicrox.trayicon", ":/images/antimicrox.png");
+    QIcon icon = PadderCommon::loadIcon(ProductIdentity::desktopId + QStringLiteral(".trayicon"),
+                                       ":/images/antimicrox.png");
     trayIcon->setIcon(icon);
     trayIcon->setContextMenu(trayIconMenu);
 
@@ -1792,13 +1794,15 @@ void MainWindow::networkManagerFinished(QNetworkReply *reply)
     }
     QJsonDocument json = QJsonDocument::fromJson(reply->readAll());
     QJsonObject doc = json.object();
-    QString latest_version = doc["tag_name"].toString().split("-")[0]; // remove notes from versions like 3.2.1-debug
-    DEBUG() << "Latest version: " << latest_version << " Installed version: " << PadderCommon::programVersion;
-    if (latest_version != PadderCommon::programVersion && latest_version.length())
+    const QString latestTag = doc["tag_name"].toString();
+    const QVersionNumber latestVersion = ProductIdentity::normalizedReleaseVersion(latestTag);
+    DEBUG() << "Latest version: " << latestTag << " Installed version: " << ProductIdentity::version;
+    if (ProductIdentity::isNewerRelease(latestTag))
     {
-        INFO() << "Update to: " << latest_version << " is available.";
+        const QString latestVersionText = latestVersion.toString();
+        INFO() << "Update to: " << latestVersionText << " is available.";
         ui->updateButton->setVisible(true);
-        ui->updateButton->setText(tr("Update to %1 available").arg(latest_version));
+        ui->updateButton->setText(tr("Update to %1 available").arg(latestVersionText));
         connect(ui->updateButton, &QPushButton::clicked, this, &MainWindow::updateButtonPressed);
     }
 }
@@ -1806,7 +1810,7 @@ void MainWindow::networkManagerFinished(QNetworkReply *reply)
 void MainWindow::updateButtonPressed()
 {
     INFO() << "Opening update website";
-    QDesktopServices::openUrl(QUrl("https://github.com/antiMicroX/antimicrox/releases/latest"));
+    QDesktopServices::openUrl(QUrl(ProductIdentity::releasesUrl));
 }
 
 #endif

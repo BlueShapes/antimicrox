@@ -146,10 +146,10 @@ void reloadTranslations(QTranslator *translator, QTranslator *appTranslator, con
 // Load application specific translation strings
 #if defined(Q_OS_UNIX)
     translator->load("antimicrox_" + language,
-                     QApplication::applicationDirPath().append("/../share/antimicrox/translations"));
+                     QApplication::applicationDirPath().append("/../share/antimicrox-delta/translations"));
 #elif defined(Q_OS_WIN)
     translator->load("antimicrox_" + language,
-                     QApplication::applicationDirPath().append("\\share\\antimicrox\\translations"));
+                     QApplication::applicationDirPath().append("\\share\\antimicrox-delta\\translations"));
 #endif
 
     qApp->installTranslator(translator);
@@ -202,7 +202,7 @@ QIcon loadIcon(QString name)
 
 void log_system_config()
 {
-    VERBOSE() << "AntiMicroX version: " << PadderCommon::programVersion
+    VERBOSE() << "AntiMicroX-Delta version: " << PadderCommon::programVersion
 #ifdef ANTIMICROX_PKG_VERSION
               << " Package: " << ANTIMICROX_PKG_VERSION
 #endif

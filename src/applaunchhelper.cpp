@@ -44,7 +44,7 @@ void AppLaunchHelper::initRunMethods()
     {
 #ifdef Q_OS_WIN
         if (!WinExtras::preserveTimerResolutionWhenHidden())
-            qWarning() << "Could not preserve high-resolution timers while AntiMicroX is hidden.";
+            qWarning() << "Could not preserve high-resolution timers while AntiMicroX-Delta is hidden.";
 #endif
         establishMouseTimerConnections();
         enablePossibleMouseSmoothing();

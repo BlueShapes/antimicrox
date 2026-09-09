@@ -13,7 +13,7 @@ on:
 jobs:
     # CodeQl Code Analysis helps discover security vulnerabilities in your code.
     # Official website: https://codeql.github.com/
-    # See the results here: https://github.com/AntiMicroX/antimicrox/security/code-scanning
+    # See the results here: https://github.com/BlueShapes/antimicrox/security/code-scanning
 
     codeql-analysis:
         name: CodeQl Code Analysis
@@ -25,11 +25,11 @@ jobs:
 
         steps:
             - name: Clone Repository
-              uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
             # Initialize CodeQl with language parameters
             - name: Initialize CodeQL
-              uses: github/codeql-action/init@5ba2889ada762081db2c4f32a729827dce632c7b # v3
+              uses: github/codeql-action/init@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
               with:
                   languages: "cpp"
 
@@ -40,18 +40,18 @@ jobs:
             - name: Configure CMake
               run: cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -B ${{ github.workspace }}/build
 
-            - name: Build AntiMicroX
+            - name: Build AntiMicroX-Delta
               run: cmake --build ${{ github.workspace }}/build
 
             # Run codeql analysis
             - name: Run CodeQL
-              uses: github/codeql-action/analyze@5ba2889ada762081db2c4f32a729827dce632c7b # v3
+              uses: github/codeql-action/analyze@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
 
     infer-analysis:
         # Infer is a static analysis tool, it produces a list of potential bugs.
         # https://fbinfer.com/
         # How to see the results?
-        # 1. Goto Static Code Analysis GitHub Actions: https://github.com/AntiMicroX/antimicrox/actions/workflows/static-code-analysis.yml
+        # 1. Goto Static Code Analysis GitHub Actions: https://github.com/BlueShapes/antimicrox/actions/workflows/static-code-analysis.yml
         # 2. Click on the relevent workflow run (runs on push, pull_requestand manually using workflow_dispatch)
         # 3. Here you can see the artifact named "report", Download it to see the details.
         # 4. Or you can click on the "Infer Code Analysis" and check the "Run Infer" step.
@@ -61,7 +61,7 @@ jobs:
 
         steps:
             - name: Clone Repository
-              uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
             # Download Infer and install at workflow run to ensure latest version
             - name: Install Dependencies
@@ -73,7 +73,7 @@ jobs:
             - name: Configure CMake
               run: cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -B ${{ github.workspace }}/build
 
-            - name: Build AntiMicroX
+            - name: Build AntiMicroX-Delta
               run: cmake --build ${{ github.workspace }}/build
 
             # Run infer analysis using the compilation database
@@ -82,7 +82,7 @@ jobs:
 
             # Upload result to build artifacts
             - name: Upload Results
-              uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
               with:
                   name: report
                   path: infer-out/report.txt

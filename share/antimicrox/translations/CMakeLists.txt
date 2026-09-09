@@ -30,6 +30,6 @@ endif()
 
 
 add_custom_target(updateqm DEPENDS ${antimicrox_QMFILES} COMMENT "Update translation files based on source and ui files")
-install(FILES ${antimicrox_QMFILES} DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/antimicrox/translations")
+install(FILES ${antimicrox_QMFILES} DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/antimicrox-delta/translations")
 
 set_directory_properties(PROPERTIES CLEAN_NO_CUSTOM true)

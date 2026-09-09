@@ -1,4 +1,4 @@
-# <img src="./src/images/antimicrox.png" alt="Icon" width="60"/> AntiMicroX
+# <img src="./src/images/antimicrox.png" alt="Icon" width="60"/> AntiMicroX-Delta
 
 1. [Description](#description)  
 2. [License](#license)  
@@ -10,58 +10,21 @@
 8. [AntiMicroX Profiles](#antimicrox-profiles)
 9. [Support](#support)
 
-## ❗Important Notice
+## Project identity
 
-I, Blue Triangle, have literally ZERO KNOWLEDGE of C++ or Qt, so this code will remain in a separate fork until I somehow learn more about them. Anyone who finds this repository is free to use my slop code as long as the license permits.
+AntiMicroX-Delta is an independently maintained GPLv3 derivative based on
+upstream AntiMicroX 3.6.1. It uses its own version series, package identifiers,
+settings directory, IPC names, and release channel. It is not an official
+release of the upstream AntiMicroX project.
 
 ## Changelog
 
-GPT-5.6 made several improvements and fixed some major issues (at least for me),
-including:
-
-### 2026-07-23
-
-- **Automatic-profile pause control**: Added a status banner to every controller
-  tab. Its lock button can temporarily pause and resume automatic profile
-  switching, so manual profile and set changes can remain active when needed.
-- **Automatic profiles enabled by default**: Automatic profiles are now enabled,
-  synchronized, and initialized at startup on Windows and X11.
-- **Easier profile selection**: Added a profile selector to the automatic-profile
-  editor. It lists profiles from the preferred profile directory and recently
-  used controller profiles.
-- **Explicit controller activation**: Added a Controller menu with one checkable
-  entry per connected controller. Unchecked controllers produce no mapped
-  input; input from multiple checked controllers is combined.
-- **Working Windows window capture**: The capture dialog now comes to the
-  foreground, and the selected application's full path is assigned correctly.
-- **Faster timed window capture**: The default delay is now three seconds
-  because one second was often too short. The maximum is 15 seconds, and
-  AntiMicroX minimizes while waiting for capture.
-- **Consistent cursor speed in the system tray**: Windows 11 may reduce timer
-  precision for applications that are minimized or otherwise hidden. AntiMicroX
-  now preserves its requested timer resolution while running in the system
-  tray, keeping cursor movement consistent whether its main window is visible
-  or hidden.
-
-### 2026-07-22
-
-- **Prevention of multiple launches**: Improved single-instance handling across
-  Windows UAC boundaries. Instances running at different privilege levels can
-  now find the same local signal server, and AntiMicroX exits safely if it
-  cannot start the server.
-- **No duplicated cursor input from a second AntiMicroX instance**:
-  Preventing a second instance from processing the same controller input keeps
-  cursor movements from being applied twice.
-- **Clearer Windows diagnostics**: Added local-server and `SendInput` diagnostics
-  to make permission and input-injection failures easier to identify.
-
----
-
-The rest of this README is unchanged from the original.
+See [CHANGELOG.md](CHANGELOG.md) for the complete Delta release history and the
+upstream history retained for attribution.
 
 ## Description
 
-AntiMicroX is a graphical program used to map gamepad keys to keyboard, mouse, scripts and macros. You can use this program to control any desktop application with a gamepad on Linux🐧 and Windows 🪟.  
+AntiMicroX-Delta is a graphical program used to map gamepad keys to keyboard, mouse, scripts and macros. You can use this program to control any desktop application with a gamepad on Linux🐧 and Windows 🪟.
 It can be also used for generating SDL2 configuration (useful for mapping atypical gamepads to generic ones like xbox360).
 
 We support X.org and Wayland.
@@ -117,51 +80,55 @@ http://www.gnu.org/licenses/gpl.txt
 
 ### Fork notice
 
-This repository is an unofficial fork of AntiMicroX. It contains modifications
-made beginning in July 2026. AntiMicroX and this modified version are distributed
-under the GNU General Public License version 3. See [LICENSE](LICENSE) for details.
+This repository contains a modified version of AntiMicroX. Existing copyright,
+authorship, license, and warranty notices are preserved. AntiMicroX-Delta is
+distributed under GNU GPL version 3 or later and is not endorsed by the upstream
+AntiMicroX maintainers. See [LICENSE](LICENSE) and [CHANGELOG.md](CHANGELOG.md).
 
 ## Installation
 
 ### Windows
 
-Just download `antimicrox-X.X.X-AMD64.exe` from [Release site](https://github.com/AntiMicroX/antimicrox/releases/latest) and install it.
+Download `antimicrox-delta-X.X.X-Windows-AMD64.exe` from the
+[AntiMicroX-Delta release page](https://github.com/BlueShapes/antimicrox/releases/latest) and install it.
 
-If AntiMicroX terminates because of an unhandled Windows exception, a diagnostic
-minidump is saved under `%LOCALAPPDATA%\antimicrox\crashes` (or `crashes` beside
-the portable executable). At most five AntiMicroX dumps are retained. Minidumps
+If AntiMicroX-Delta terminates because of an unhandled Windows exception, a diagnostic
+minidump is saved under `%LOCALAPPDATA%\antimicrox-delta\crashes` (or `crashes` beside
+a locally built portable executable). At most five AntiMicroX-Delta dumps are retained. Minidumps
 can contain paths, stack data, and fragments of in-memory input, so inspect them
 before sharing them publicly.
 
 ### Flatpak
 
-The flatpak version is distributed on Flathub, and runs on most major Linux distributions. See instructions here: [Flathub application page](https://flathub.org/apps/details/io.github.antimicrox.antimicrox)
-
-If you have Flathub [set up](https://flatpak.org/setup/) already:
-
-```bash
-flatpak install flathub io.github.antimicrox.antimicrox
-```
+AntiMicroX-Delta does not currently publish an official Flathub package. The
+upstream `io.github.antimicrox.antimicrox` package is a separate application and
+does not receive Delta updates.
 
 ❕ Flatpak package may not work correctly with wayland [(Fix available here)](https://github.com/AntiMicroX/antimicrox/wiki/Open-uinput-error)
 
 ### AppImage
 
-Download from the [release site](https://github.com/AntiMicroX/antimicrox/releases).
+Download from the [AntiMicroX-Delta release site](https://github.com/BlueShapes/antimicrox/releases).
 
 It is recommended to use [AppImageLauncher](https://github.com/TheAssassin/AppImageLauncher) with this package.
 
 ### Debian/Ubuntu-based distributions
 
-Download from the [release site](https://github.com/AntiMicroX/antimicrox/releases) and install `.deb` package.
+Download from the [AntiMicroX-Delta release site](https://github.com/BlueShapes/antimicrox/releases) and install the `.deb` package.
 
-### Fedora
+### Upstream distribution packages (not AntiMicroX-Delta)
+
+The Fedora, openSUSE, Arch, and third-party package-manager commands below
+install upstream AntiMicroX. They are retained as upstream documentation and do
+not install or update AntiMicroX-Delta.
+
+#### Fedora
 
 ```
 dnf install antimicrox
 ```
 
-### openSUSE
+#### openSUSE
 
 A [package](https://software.opensuse.org/package/antimicrox) is available.
 
@@ -169,7 +136,7 @@ A [package](https://software.opensuse.org/package/antimicrox) is available.
 zypper install antimicrox
 ```
 
-### Arch Linux or Arch Linux based distributions:
+#### Arch Linux or Arch Linux based distributions
 
 ```
 trizen -S antimicrox
@@ -204,18 +171,18 @@ pacman -S antimicrox
 
 List of required dependencies and build instructions can be found [here](./BUILDING.md).
 
-### Packages status
+### Upstream package status
 
 Status of package `antimicrox`:  
 [![Packaging status](https://repology.org/badge/vertical-allrepos/antimicrox.svg?columns=3&minversion=3.1)](https://repology.org/project/antimicrox/versions)
 
 ## Command Line
 
-Run `antimicrox --help` or read `man antimicrox` for command-line parameters.
+Run `antimicrox-delta --help` or read `man antimicrox-delta` for command-line parameters.
 
 <details>
   <summary>Commandline for flatpak</summary>
-  In case of flatpak package AntiMicroX can be launched with command:
+  The separate upstream Flatpak package can be launched with:
   <br>
   <code>flatpak run io.github.antimicrox.antimicrox</code> instead of just <code>antimicrox</code>
   <br>
@@ -227,18 +194,20 @@ Run `antimicrox --help` or read `man antimicrox` for command-line parameters.
 
 ## D-Bus
 
-AntiMicroX provides a D-Bus service, io.github.antimicrox. You can control some
-aspects of AntiMicroX using D-Bus, such as selecting the current control set.
+AntiMicroX-Delta provides the D-Bus service
+`io.github.blueshapes.AntiMicroXDelta`. You can use it to control some aspects
+of AntiMicroX-Delta, such as selecting the current control set.
 
 For example, to select set 0 for input device 0 with dbus-send:
 
 ```
-dbus-send --print-reply --dest=io.github.antimicrox /InputDevice/0 io.github.antimicrox.InputDevice.setActiveSetNumber int32:0
+dbus-send --print-reply --dest=io.github.blueshapes.AntiMicroXDelta /io/github/blueshapes/AntiMicroXDelta/inputdevice/0 io.github.blueshapes.AntiMicroXDelta.InputDevice.setActiveSetNumber int32:0
 ```
 
 ### Objects
 
-AntiMicroX provides InputDevice objects with paths `/InputDevice/<N>`, where
+AntiMicroX-Delta provides InputDevice objects with paths
+`/io/github/blueshapes/AntiMicroXDelta/inputdevice/<N>`, where
 `<N>` is the device index.
 
 To find a device of interest, enumerate those objects and use `getSDLName` and
@@ -246,13 +215,15 @@ To find a device of interest, enumerate those objects and use `getSDLName` and
 
 ### Interfaces
 
-InputDevice objects support the [io.github.antimicrox.InputDevice](other/io.github.antimicrox.inputdevice.xml) interface.
+InputDevice objects support the
+[`io.github.blueshapes.AntiMicroXDelta.InputDevice`](other/io.github.antimicrox.inputdevice.xml)
+interface.
 
-#### Method: io.github.antimicrox.InputDevice.getSDLName()
+#### Method: io.github.blueshapes.AntiMicroXDelta.InputDevice.getSDLName()
 
 `getSDLName()` provides the human-readable name of the device, such as "Microsoft Xbox 360 Controller" or "HORIPAD FPS for Nintendo Switch".
 
-#### Method: io.github.antimicrox.InputDevice.getDescription()
+#### Method: io.github.blueshapes.AntiMicroXDelta.InputDevice.getDescription()
 
 `getDescription()` provides a detailed description of the device:
 
@@ -277,7 +248,7 @@ Index:            1
 
 This includes:
 
-* The controller's `UniqueID` assigned by AntiMicroX
+* The controller's `UniqueID` assigned by AntiMicroX-Delta
 * The controller's `GUID` assigned by SDL
 * The controller's USB `VendorID`, `ProductID`, `Serial`, `ProductVersion`, and
   `Name`
@@ -286,21 +257,21 @@ This includes:
   `# of RawButtons`, `# of Buttons`, `# of Hats`, `Accelerometer`, and
   `Gysroscope`
 
-#### Method: io.github.antimicrox.InputDevice.getActiveSetNumber()
+#### Method: io.github.blueshapes.AntiMicroXDelta.InputDevice.getActiveSetNumber()
 
 `getActiveSetNumber()` returns the current set number for this device.
 
 API set indices are 0-based, but they are displayed in the UI with 1-based
 labels.
 
-#### Method: io.github.antimicrox.InputDevice.getActiveSetName()
+#### Method: io.github.blueshapes.AntiMicroXDelta.InputDevice.getActiveSetName()
 
 `getActiveSetName()` returns the name of the current set for this device.
 
-This is empty if the set was not given a name.  In that case, AntiMicroX
+This is empty if the set was not given a name. In that case, AntiMicroX-Delta
 displays a default name: `Set <N>` with a 1-based index.
 
-#### Method: io.github.antimicrox.InputDevice.setActiveSetNumber()
+#### Method: io.github.blueshapes.AntiMicroXDelta.InputDevice.setActiveSetNumber()
 
 `setActiveSetNumber()` changes the active set for this device to the set
 specified, as a 0-based index.
@@ -312,14 +283,14 @@ interface.
 
 ## Wiki
 
-[Look here](https://github.com/AntiMicroX/antimicrox/wiki)
+[Look here](https://github.com/BlueShapes/antimicrox/wiki)
 
 ## Testing Under Linux
 
-If you are having problems with antimicrox detecting a controller or
+If you are having problems with AntiMicroX-Delta detecting a controller or
 detecting all axes and buttons, you should test the controller outside of
-antimicrox to check if the problem is with antimicrox or not. The two endorsed
-programs for testing gamepads outside of antimicrox are **sdl-jstest**
+AntiMicroX-Delta to check whether the problem is in AntiMicroX-Delta. The two endorsed
+programs for testing gamepads outside of AntiMicroX-Delta are **sdl-jstest**
 (**sdl2-jstest**) and **evtest**. SDL2 utilizes evdev on Linux so performing
 testing with older programs that use joydev won't be as helpful since some
 devices behave a bit differently between the two systems. Another method also exists, 
@@ -329,12 +300,13 @@ which can be found [here](https://github.com/juliagoda/SDL_JoystickButtonNames).
 
 If you would like to send the profile you are using for your application or find something 
 for yourself, [here](https://github.com/AntiMicroX/antimicrox-profiles) is the forked repository. If you want to report a bug, ask 
-a question or share a suggestion, you can do that on the antimicrox page or on the
+a question or share a suggestion about that collection, use the
 [antimicrox-profiles](https://github.com/AntiMicroX/antimicrox-profiles) page.
 
 ## Support
 
-There are several ways to get help with AntiMicroX. The easiest way is to upvote (with 👍) issues you thing are the most important ones.
+For AntiMicroX-Delta support, use the [BlueShapes issue tracker](https://github.com/BlueShapes/antimicrox/issues).
+Upstream AntiMicroX issues and translation infrastructure remain separate.
 
 ### Contributing
 
@@ -343,7 +315,8 @@ Some issues are may have bounties which are meant to attract contributors.
 
 ### Translation
 
-Translation process is handled via [Weblate](https://weblate.org/). If you want to help just click this [link](https://hosted.weblate.org/engage/antimicrox).
+AntiMicroX-Delta currently inherits upstream translations. Their translation
+process is handled through [Weblate](https://hosted.weblate.org/engage/antimicrox).
 
 Translation status
 

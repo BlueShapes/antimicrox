@@ -84,7 +84,7 @@
         </font>
        </property>
        <property name="text">
-        <string>AntiMicroX</string>
+        <string>AntiMicroX-Delta</string>
        </property>
        <property name="alignment">
         <set>Qt::AlignHCenter|Qt::AlignTop</set>

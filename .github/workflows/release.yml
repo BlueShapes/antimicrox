@@ -30,7 +30,7 @@ jobs:
             release_commit: ${{ steps.resolve.outputs.release_commit }}
 
         steps:
-            - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
               with:
                   ref: refs/tags/${{ env.RELEASE_TAG }}
                   fetch-depth: 0
@@ -53,7 +53,7 @@ jobs:
                       SOURCE_VERSION="$SOURCE_VERSION-$PRERELEASE"
                   fi
 
-                  test "$RELEASE_TAG" = "$SOURCE_VERSION"
+                  test "$RELEASE_TAG" = "v$SOURCE_VERSION"
                   test "$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json isDraft,isPrerelease --jq '(.isDraft or .isPrerelease)')" = "false"
                   test "$(gh run list --repo "$GITHUB_REPOSITORY" --workflow main.yml --commit "$RELEASE_COMMIT" --limit 20 --json status,conclusion --jq '[.[] | select(.status == "completed" and .conclusion == "success")] | length')" -gt 0
                   echo "release_commit=$RELEASE_COMMIT" >> "$GITHUB_OUTPUT"
@@ -79,7 +79,7 @@ jobs:
         runs-on: ${{ matrix.image }}
 
         steps:
-            - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
               with:
                   ref: ${{ needs.validate-release.outputs.release_commit }}
                   persist-credentials: false
@@ -90,10 +90,10 @@ jobs:
             - name: Configure CMake
               run: cmake -DCPACK_GENERATOR="DEB" -DCMAKE_BUILD_TYPE=Release -DCHECK_FOR_UPDATES=ON -DANTIMICROX_PKG_VERSION="GitHub deb Release" -B ${{ github.workspace }}/build
 
-            - name: Run security policy tests
+            - name: Run focused release tests
               run: |
-                  cmake --build ${{ github.workspace }}/build --target SecurityPolicyTests --parallel 8
-                  ctest --test-dir ${{ github.workspace }}/build --output-on-failure -R SecurityPolicyTests
+                  cmake --build ${{ github.workspace }}/build --target ProductIdentityTests SecurityPolicyTests --parallel 8
+                  ctest --test-dir ${{ github.workspace }}/build --output-on-failure -R "ProductIdentityTests|SecurityPolicyTests"
 
             - name: Create Deb package
               id: create_deb
@@ -141,7 +141,7 @@ jobs:
                 sudo cmake --install .
                 sudo cp /usr/local/lib/libSDL2-2.0.so.0 /usr/lib/x86_64-linux-gnu/libSDL2-2.0.so.0
 
-            - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
               with:
                   ref: ${{ needs.validate-release.outputs.release_commit }}
                   persist-credentials: false
@@ -171,16 +171,15 @@ jobs:
                   chmod +x appimagetool-x86_64.AppImage
                   chmod +x linuxdeploy-plugin-qt-x86_64.AppImage
 
-            - name: Build AntiMicroX
+            - name: Build AntiMicroX-Delta
               run: |
-                  VERSION=`cat ./CMakeLists.txt | grep "set(ANTIMICROX_" | grep _VERSION | cut -d " " -f 2 | cut -d ")" -f 1`
-                  MAJOR=`echo $VERSION | cut -d " " -f 1`
-                  MINOR=`echo $VERSION | cut -d " " -f 2`
-                  PATCH=`echo $VERSION | cut -d " " -f 3`
+                  MAJOR="$(sed -n 's/^set(ANTIMICROX_MAJOR_VERSION \([^)]*\))$/\1/p' CMakeLists.txt)"
+                  MINOR="$(sed -n 's/^set(ANTIMICROX_MINOR_VERSION \([^)]*\))$/\1/p' CMakeLists.txt)"
+                  PATCH="$(sed -n 's/^set(ANTIMICROX_PATCH_VERSION \([^)]*\))$/\1/p' CMakeLists.txt)"
                   cd build
                   cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_PREFIX_PATH="${QT_ROOT_DIR}/lib/cmake" -DANTIMICROX_PKG_VERSION="$MAJOR.$MINOR.$PATCH-x86_64 GitHub AppImage Release"
-                  cmake --build . --target SecurityPolicyTests --parallel 8
-                  ctest --output-on-failure -R SecurityPolicyTests
+                  cmake --build . --target ProductIdentityTests SecurityPolicyTests --parallel 8
+                  ctest --output-on-failure -R "ProductIdentityTests|SecurityPolicyTests"
                   make install DESTDIR=AppDir -j8
 
             # UPDATE_INFORMATION describes where information about updates can be found
@@ -189,22 +188,21 @@ jobs:
                   cd build
                   export PATH="${QT_ROOT_DIR}/bin:${PATH}"
                   export CMAKE_PREFIX_PATH="${QT_ROOT_DIR}/lib/cmake"
-                  export UPDATE_INFORMATION="zsync|https://github.com/$GITHUB_REPOSITORY/releases/latest/download/antimicrox-x86_64.AppImage.zsync"
+                  export UPDATE_INFORMATION="zsync|https://github.com/$GITHUB_REPOSITORY/releases/latest/download/AntiMicroX-Delta-x86_64.AppImage.zsync"
                   ./linuxdeploy-x86_64.AppImage --appdir AppDir --plugin qt
                   ./appimagetool-x86_64.AppImage --runtime-file runtime-x86_64 AppDir/ -u "$UPDATE_INFORMATION"
 
             # Upload generated files to release
             - name: Upload binaries to release
-              run: gh release upload "$RELEASE_TAG" ./build/AntiMicroX*.AppImage ./build/AntiMicroX*.zsync --clobber
+              run: gh release upload "$RELEASE_TAG" ./build/AntiMicroX-Delta*.AppImage ./build/AntiMicroX-Delta*.zsync --clobber
               env:
                   GH_TOKEN: ${{ github.token }}
 
-            - name: Build AntiMicroX-debug
+            - name: Build AntiMicroX-Delta-debug
               run: |
-                  VERSION=`cat ./CMakeLists.txt | grep "set(ANTIMICROX_" | grep _VERSION | cut -d " " -f 2 | cut -d ")" -f 1`
-                  MAJOR=`echo $VERSION | cut -d " " -f 1`
-                  MINOR=`echo $VERSION | cut -d " " -f 2`
-                  PATCH=`echo $VERSION | cut -d " " -f 3`
+                  MAJOR="$(sed -n 's/^set(ANTIMICROX_MAJOR_VERSION \([^)]*\))$/\1/p' CMakeLists.txt)"
+                  MINOR="$(sed -n 's/^set(ANTIMICROX_MINOR_VERSION \([^)]*\))$/\1/p' CMakeLists.txt)"
+                  PATCH="$(sed -n 's/^set(ANTIMICROX_PATCH_VERSION \([^)]*\))$/\1/p' CMakeLists.txt)"
                   cd build
                   cmake .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_PREFIX_PATH="${QT_ROOT_DIR}/lib/cmake" -DANTIMICROX_PKG_VERSION="$MAJOR.$MINOR.$PATCH-debug-x86_64 \(AppImage-debug\)"
                   make install DESTDIR=AppDir -j8
@@ -216,11 +214,11 @@ jobs:
                   export CMAKE_PREFIX_PATH="${QT_ROOT_DIR}/lib/cmake"
                   ./linuxdeploy-x86_64.AppImage --appdir AppDir --plugin qt
                   ./appimagetool-x86_64.AppImage --runtime-file runtime-x86_64 AppDir/
-                  mv AntiMicroX-x86_64.AppImage AntiMicroX-debug-x86_64.AppImage
+                  mv AntiMicroX-Delta-x86_64.AppImage AntiMicroX-Delta-debug-x86_64.AppImage
 
             # Upload generated files to release
             - name: Upload binaries to release
-              run: gh release upload "$RELEASE_TAG" ./build/AntiMicroX-debug-x86_64.AppImage --clobber
+              run: gh release upload "$RELEASE_TAG" ./build/AntiMicroX-Delta-debug-x86_64.AppImage --clobber
               env:
                   GH_TOKEN: ${{ github.token }}
 
@@ -235,7 +233,7 @@ jobs:
                 shell: msys2 {0}
 
         steps:
-            - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
               with:
                   ref: ${{ needs.validate-release.outputs.release_commit }}
                   persist-credentials: false
@@ -274,11 +272,11 @@ jobs:
               env:
                   CMAKE_PREFIX_PATH: "${{ env.QT_ROOT_DIR }}/lib/cmake"
 
-            - name: Run security policy tests
+            - name: Run focused release tests
               run: |
-                  cmake --build '${{ github.workspace }}'/build --target SecurityPolicyTests --parallel 8
+                  cmake --build '${{ github.workspace }}'/build --target ProductIdentityTests SecurityPolicyTests --parallel 8
                   QT_BIN="$(cygpath -u "$QT_ROOT_DIR")/bin"
-                  PATH="$QT_BIN:$PATH" ctest --test-dir '${{ github.workspace }}'/build --output-on-failure -R SecurityPolicyTests
+                  PATH="$QT_BIN:$PATH" ctest --test-dir '${{ github.workspace }}'/build --output-on-failure -R "ProductIdentityTests|SecurityPolicyTests"
 
             - name: Build Installer
               run: cmake --build '${{ github.workspace }}'/build --target package --parallel 8
@@ -288,7 +286,7 @@ jobs:
             - name: Upload installer to release
               shell: pwsh
               run: |
-                  $installer = @(Get-ChildItem -Path "${{ github.workspace }}/build" -Filter "antimicrox*.exe" -File)
+                  $installer = @(Get-ChildItem -Path "${{ github.workspace }}/build" -Filter "antimicrox-delta*.exe" -File)
                   if ($installer.Count -ne 1) {
                       throw "Expected exactly one Windows installer, found $($installer.Count)."
                   }

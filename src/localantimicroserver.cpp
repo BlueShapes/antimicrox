@@ -60,7 +60,7 @@ bool LocalAntiMicroServer::startLocalServer()
 
     if (!localServer->listen(PadderCommon::localSocketKey))
     {
-        const QString message = tr("Could not start the signal server. AntiMicroX will exit to avoid processing "
+        const QString message = tr("Could not start the signal server. AntiMicroX-Delta will exit to avoid processing "
                                    "input in more than one instance.");
         PRINT_STDERR() << message << "\n";
         qCritical() << message << "Server error:" << localServer->serverError()
