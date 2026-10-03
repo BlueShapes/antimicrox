@@ -19,6 +19,8 @@
 #ifndef JOYTABWIDGET_H
 #define JOYTABWIDGET_H
 
+#include "controlwidgetcleanup.h"
+
 #include <QLabel>
 #include <QWidget>
 
@@ -86,10 +88,13 @@ class JoyTabWidget : public QWidget
     void disconnectCheckUnsavedEvent();
     void reconnectCheckUnsavedEvent();
     void fillSetButtons(SetJoystick *set);   // JoyTabWidgetSets class
-    void removeSetButtons(SetJoystick *set); // JoyTabWidgetSets class
+    void removeSetButtons(SetJoystick *set, bool deleteImmediately = false); // JoyTabWidgetSets class
     bool isKeypadUnlocked();
 
     static const int DEFAULTNUMBERPROFILES = 5;
+
+    ControlWidgetCleanup::State controlWidgetCleanup;
+    int controlAssignmentChangeDepth = 0;
 
   signals:
     void joystickConfigChanged(int index); // JoyTabSettings class

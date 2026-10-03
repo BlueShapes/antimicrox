@@ -224,6 +224,7 @@ set(antimicrox_SOURCES
         src/joybuttontypes/joygyroscopebutton.cpp
         src/joybuttontypes/joysensorbutton.cpp
         src/joycontrolstick.cpp
+        src/sticknamestate.cpp
         src/joycontrolstickbuttonpushbutton.cpp
         src/joycontrolstickcontextmenu.cpp
         src/joycontrolstickpushbutton.cpp
@@ -364,6 +365,7 @@ set(antimicrox_HEADERS
         src/joybuttontypes/joygyroscopebutton.h
         src/joybuttontypes/joysensorbutton.h
         src/joycontrolstick.h
+        src/sticknamestate.h
         src/joycontrolstickbuttonpushbutton.h
         src/joycontrolstickcontextmenu.h
         src/joycontrolstickpushbutton.h
@@ -864,6 +866,8 @@ if(BUILD_TESTING)
     add_subdirectory(tests/productidentity)
     add_subdirectory(tests/securitypolicy)
     add_subdirectory(tests/crashlogging)
+    add_subdirectory(tests/sticknames)
+    add_subdirectory(tests/controlwidgetlifetime)
 endif(BUILD_TESTING)
 
 if(WITH_TESTS)

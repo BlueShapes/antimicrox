@@ -126,6 +126,18 @@ AdvanceStickAssignmentDialog::AdvanceStickAssignmentDialog(QWidget *parent)
 
 AdvanceStickAssignmentDialog::~AdvanceStickAssignmentDialog() { delete ui; }
 
+AdvanceStickAssignmentDialog::ControlAssignmentsChangeGuard::ControlAssignmentsChangeGuard(
+    AdvanceStickAssignmentDialog *dialog)
+    : dialog(dialog)
+{
+    emit dialog->controlAssignmentsAboutToChange();
+}
+
+AdvanceStickAssignmentDialog::ControlAssignmentsChangeGuard::~ControlAssignmentsChangeGuard()
+{
+    emit dialog->controlAssignmentsChanged();
+}
+
 void AdvanceStickAssignmentDialog::checkForAxisAssignmentStickOne(QWidget *comboBox)
 {
     checkForAxisAssignmentSticks(comboBox, ui->xAxisTwoComboBox, ui->yAxisTwoComboBox, 0);
@@ -143,6 +155,8 @@ void AdvanceStickAssignmentDialog::checkForAxisAssignmentSticks(QWidget *comboBo
     {
         if (xAxisComboBox->currentIndex() != yAxisComboBox->currentIndex())
         {
+            ControlAssignmentsChangeGuard changeGuard(this);
+
             int originset = 0;
 
             for (auto set = joystick->getJoystick_sets().begin(); set != joystick->getJoystick_sets().end(); ++set)
@@ -181,6 +195,8 @@ void AdvanceStickAssignmentDialog::checkForAxisAssignmentSticks(QWidget *comboBo
 
 void AdvanceStickAssignmentDialog::changeStateVDPadWidgets(bool enabledVDPads)
 {
+    ControlAssignmentsChangeGuard changeGuard(this);
+
     ui->vdpadUpComboBox->setEnabled(enabledVDPads);
     ui->vdpadDownComboBox->setEnabled(enabledVDPads);
     ui->vdpadLeftComboBox->setEnabled(enabledVDPads);
@@ -219,6 +235,8 @@ void AdvanceStickAssignmentDialog::changeStateStickOneWidgets(bool enabled)
         ui->quickAssignStick1PushButton->setEnabled(true);
     } else
     {
+        ControlAssignmentsChangeGuard changeGuard(this);
+
         ui->xAxisOneComboBox->setEnabled(false);
         ui->xAxisOneComboBox->setCurrentIndex(0);
         ui->yAxisOneComboBox->setEnabled(false);
@@ -249,6 +267,8 @@ void AdvanceStickAssignmentDialog::changeStateStickTwoWidgets(bool enabled)
         ui->quickAssignStick2PushButton->setEnabled(true);
     } else
     {
+        ControlAssignmentsChangeGuard changeGuard(this);
+
         ui->xAxisTwoComboBox->setEnabled(false);
         ui->xAxisTwoComboBox->setCurrentIndex(0);
         ui->yAxisTwoComboBox->setEnabled(false);
@@ -305,6 +325,8 @@ void AdvanceStickAssignmentDialog::refreshSticksForAxes(bool axesExist, int xAxi
 
 void AdvanceStickAssignmentDialog::refreshVDPadsConfiguration()
 {
+    ControlAssignmentsChangeGuard changeGuard(this);
+
     VDPad *vdpad = joystick->getActiveSetJoystick()->getVDPad(0);
 
     if (vdpad != nullptr)
@@ -436,6 +458,8 @@ void AdvanceStickAssignmentDialog::populateDPadComboBoxes()
 
 void AdvanceStickAssignmentDialog::changeVDPadUpButton(int index)
 {
+    ControlAssignmentsChangeGuard changeGuard(this);
+
     if (index > 0)
     {
         if (ui->vdpadDownComboBox->currentIndex() == index)
@@ -511,6 +535,8 @@ void AdvanceStickAssignmentDialog::changeVDPadUpButton(int index)
 
 void AdvanceStickAssignmentDialog::changeVDPadDownButton(int index)
 {
+    ControlAssignmentsChangeGuard changeGuard(this);
+
     if (index > 0)
     {
         if (ui->vdpadUpComboBox->currentIndex() == index)
@@ -586,6 +612,8 @@ void AdvanceStickAssignmentDialog::changeVDPadDownButton(int index)
 
 void AdvanceStickAssignmentDialog::changeVDPadLeftButton(int index)
 {
+    ControlAssignmentsChangeGuard changeGuard(this);
+
     if (index > 0)
     {
         if (ui->vdpadUpComboBox->currentIndex() == index)
@@ -661,6 +689,8 @@ void AdvanceStickAssignmentDialog::changeVDPadLeftButton(int index)
 
 void AdvanceStickAssignmentDialog::changeVDPadRightButton(int index)
 {
+    ControlAssignmentsChangeGuard changeGuard(this);
+
     if (index > 0)
     {
         if (ui->vdpadUpComboBox->currentIndex() == index)

@@ -21,6 +21,7 @@
 
 #include "joybuttontypes/joybutton.h"
 #include "joycontrolstickdirectionstype.h"
+#include "sticknamestate.h"
 
 #include <QPointer>
 
@@ -300,8 +301,7 @@ class JoyControlStick : public QObject, public JoyStickDirectionsType
     JoyStickDirections currentDirection;
     JoyMode currentMode;
 
-    QString stickName;
-    QString defaultStickName;
+    StickNameState stickNameState;
 
     QTimer directionDelayTimer;
 

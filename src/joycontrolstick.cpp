@@ -797,37 +797,16 @@ QString JoyControlStick::getName(bool forceFullFormat, bool displayNames)
 
 QString JoyControlStick::getPartialName(bool forceFullFormat, bool displayNames)
 {
-    QString label = QString();
-
-    if (!stickName.isEmpty() && displayNames)
-    {
-        if (forceFullFormat)
-            label.append(tr("Stick")).append(" ");
-
-        label.append(stickName);
-    } else if (!defaultStickName.isEmpty())
-    {
-        if (forceFullFormat)
-            label.append(tr("Stick")).append(" ");
-
-        label.append(defaultStickName);
-    } else
-    {
-        label.append(tr("Stick")).append(" ");
-        label.append(QString::number(getRealJoyIndex()));
-    }
-
-    setStickName(label);
-    return label;
+    return stickNameState.partialName(tr("Stick"), getRealJoyIndex(), forceFullFormat, displayNames);
 }
 
 void JoyControlStick::setDefaultStickName(QString tempname)
 {
-    defaultStickName = tempname;
+    stickNameState.setDefaultName(tempname);
     emit stickNameChanged();
 }
 
-QString JoyControlStick::getDefaultStickName() { return defaultStickName; }
+QString JoyControlStick::getDefaultStickName() { return stickNameState.defaultName(); }
 
 int JoyControlStick::getMaxZone() { return maxZone; }
 
@@ -860,7 +839,7 @@ void JoyControlStick::reset()
     safezone = false;
     currentDirection = StickCentered;
     currentMode = StandardMode;
-    stickName.clear();
+    stickNameState.clearCustomName();
     circle = GlobalVariables::JoyControlStick::DEFAULTCIRCLE;
     stickDelay = GlobalVariables::JoyControlStick::DEFAULTSTICKDELAY;
 
@@ -2179,15 +2158,11 @@ QHash<JoyControlStick::JoyStickDirections, JoyControlStickButton *> JoyControlSt
 
 void JoyControlStick::setStickName(QString tempName)
 {
-    if ((tempName.length() <= 20) && (tempName != stickName))
-    {
-        stickName = tempName;
+    if (stickNameState.setCustomName(tempName))
         emit stickNameChanged();
-        // emit propertyUpdated();
-    }
 }
 
-QString JoyControlStick::getStickName() { return stickName; }
+QString JoyControlStick::getStickName() { return stickNameState.customName(); }
 
 void JoyControlStick::setButtonsWheelSpeedX(int value)
 {
@@ -2711,7 +2686,7 @@ void JoyControlStick::copyAssignments(JoyControlStick *destStick)
     destStick->diagonalRange = diagonalRange;
     destStick->currentDirection = currentDirection;
     destStick->currentMode = currentMode;
-    destStick->stickName = stickName;
+    destStick->stickNameState.copyCustomNameFrom(stickNameState);
     destStick->circle = circle;
     destStick->stickDelay = stickDelay;
 

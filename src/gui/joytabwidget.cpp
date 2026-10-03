@@ -23,6 +23,7 @@
 #include "axiseditdialog.h"
 #include "buttoneditdialog.h"
 #include "common.h"
+#include "controlwidgetcleanup.h"
 #include "dpadpushbuttongroup.h"
 #include "extraprofilesettingsdialog.h"
 #include "globalvariables.h"
@@ -1417,9 +1418,20 @@ void JoyTabWidget::changeSetEight() { m_joystick->setActiveSetNumber(7); }
 
 void JoyTabWidget::showStickAssignmentDialog()
 {
+    // Constructor initialization and later assignment edits can replace the input models.
+    removeCurrentButtons();
     Joystick *temp = qobject_cast<Joystick *>(m_joystick); // static_cast
     AdvanceStickAssignmentDialog *dialog = new AdvanceStickAssignmentDialog(temp, this);
+    connect(dialog, &AdvanceStickAssignmentDialog::controlAssignmentsAboutToChange, this, [this] {
+        if (controlAssignmentChangeDepth++ == 0)
+            removeCurrentButtons();
+    });
+    connect(dialog, &AdvanceStickAssignmentDialog::controlAssignmentsChanged, this, [this] {
+        if (--controlAssignmentChangeDepth == 0)
+            fillButtons();
+    });
     connect(dialog, &AdvanceStickAssignmentDialog::finished, this, &JoyTabWidget::refreshButtons);
+    fillButtons();
     dialog->show();
 }
 
@@ -1510,7 +1522,8 @@ void JoyTabWidget::removeCurrentButtons()
     for (int i = 0; i < GlobalVariables::InputDevice::NUMBER_JOYSETS; i++)
     {
         SetJoystick *currentSet = m_joystick->getSetJoystick(i);
-        removeSetButtons(currentSet);
+        // Drop queued GUI callbacks before the input thread replaces this set's controls.
+        removeSetButtons(currentSet, true);
     }
 }
 
@@ -2406,12 +2419,11 @@ void JoyTabWidget::fillSetButtons(SetJoystick *set)
     }
 }
 
-void JoyTabWidget::removeSetButtons(SetJoystick *set)
+void JoyTabWidget::removeSetButtons(SetJoystick *set, bool deleteImmediately)
 {
     SetJoystick *currentSet = set;
     currentSet->disconnectPropertyUpdatedConnection();
 
-    QLayoutItem *child = nullptr;
     QGridLayout *current_layout = nullptr;
     switch (currentSet->getIndex())
     {
@@ -2452,13 +2464,9 @@ void JoyTabWidget::removeSetButtons(SetJoystick *set)
     }
     }
 
-    while (current_layout && ((child = current_layout->takeAt(0)) != nullptr))
-    {
-        current_layout->removeWidget(child->widget());
-        child->widget()->deleteLater();
-        delete child;
-        child = nullptr;
-    }
+    // Profile resets require destruction now; display-only rebuilds may run inside a group signal.
+    controlWidgetCleanup.clearLayout(current_layout, deleteImmediately ? ControlWidgetCleanup::Mode::Immediate
+                                                                      : ControlWidgetCleanup::Mode::Deferred);
 
     for (int j = 0; j < m_joystick->getNumberSticks(); j++)
     {
@@ -2613,7 +2621,7 @@ void JoyTabWidget::performSetCopy()
         {
             PadderCommon::lockInputDevices();
 
-            removeSetButtons(destSet);
+            removeSetButtons(destSet, true);
 
             QMetaObject::invokeMethod(sourceSet, "copyAssignments", Qt::BlockingQueuedConnection,
                                       Q_ARG(SetJoystick *, destSet));

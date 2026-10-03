@@ -46,6 +46,8 @@ class AdvanceStickAssignmentDialog : public QDialog
   signals:
     void stickConfigurationChanged();
     void vdpadConfigurationChanged();
+    void controlAssignmentsAboutToChange();
+    void controlAssignmentsChanged();
 
   private slots:
     void refreshStickConfiguration(JoyControlStick *stick1, JoyControlStick *stick2);
@@ -88,6 +90,16 @@ class AdvanceStickAssignmentDialog : public QDialog
     void reenableButtonEvents();
 
   private:
+    class ControlAssignmentsChangeGuard final
+    {
+      public:
+        explicit ControlAssignmentsChangeGuard(AdvanceStickAssignmentDialog *dialog);
+        ~ControlAssignmentsChangeGuard();
+
+      private:
+        AdvanceStickAssignmentDialog *dialog;
+    };
+
     Ui::AdvanceStickAssignmentDialog *ui;
 
     Joystick *joystick;
