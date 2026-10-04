@@ -3097,6 +3097,35 @@ void JoyButton::eventReset()
     releaseActiveSlots();
 }
 
+void JoyButton::suspensionReset()
+{
+    QWriteLocker tempAssignLocker(&assignmentsLock);
+
+    resetSlotsProp(true);
+    stopTimers(true);
+    pauseTimer.stop();
+    clearQueues();
+    releaseActiveSlots();
+
+    // Releasing an active JoySetChange slot can schedule a delayed change
+    // again. Stop and clear all transient state after direct output release.
+    resetSlotsProp(true);
+    stopTimers(true);
+    pauseTimer.stop();
+    clearQueues();
+
+    isDown = false;
+    toggleActiveState = false;
+    isButtonPressed = false;
+    isKeyPressed = false;
+    whileHeldStatus = false;
+    pendingEvent = false;
+    pendingPress = false;
+    pendingIgnoreSets = false;
+    m_ignoresets = false;
+    resetAccelerationState();
+}
+
 void JoyButton::releaseActiveSlots()
 {
     if (!getActiveSlots().isEmpty())
@@ -4342,6 +4371,20 @@ bool JoyButton::isModifierButton() { return false; }
 void JoyButton::resetActiveButtonMouseDistances(JoyButtonMouseHelper *mouseHelper)
 {
     mouseHelper->resetButtonMouseDistances();
+}
+
+void JoyButton::clearSuspendedMouseState()
+{
+    cursorXSpeeds.clear();
+    cursorYSpeeds.clear();
+    springXSpeeds.clear();
+    springYSpeeds.clear();
+    pendingMouseButtons.clear();
+    mouseSpeedModList.clear();
+    GlobalVariables::JoyButton::cursorRemainderX = 0;
+    GlobalVariables::JoyButton::cursorRemainderY = 0;
+    GlobalVariables::JoyButton::mouseHistoryX.clear();
+    GlobalVariables::JoyButton::mouseHistoryY.clear();
 }
 
 void JoyButton::resetAccelerationDistances()

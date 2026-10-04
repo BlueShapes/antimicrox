@@ -592,6 +592,29 @@ void JoySensor::reset()
     resetButtons();
 }
 
+void JoySensor::suspensionReset()
+{
+    m_delay_timer.stop();
+    m_active = false;
+    m_pending_event = false;
+    m_pending_ignore_sets = false;
+    m_current_direction = JoySensorDirection::SENSOR_CENTERED;
+    for (size_t i = 0; i < ACTIVE_BUTTON_COUNT; ++i)
+        m_active_button[i] = nullptr;
+
+    for (int i = 0; i < 3; ++i)
+    {
+        m_current_value[i] = 0.0f;
+        m_pending_value[i] = 0.0f;
+    }
+
+    for (JoySensorButton *button : m_buttons)
+    {
+        if (button != nullptr)
+            button->suspensionReset();
+    }
+}
+
 /**
  * @brief Sets the dead zone of the sensor to the given value
  * @param[in] value New sensor dead zone

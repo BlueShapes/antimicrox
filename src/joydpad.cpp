@@ -1090,3 +1090,20 @@ void JoyDPad::eventReset()
         button->eventReset();
     }
 }
+
+void JoyDPad::suspensionReset()
+{
+    clearPendingEvent();
+    if (directionDelayTimer.isActive())
+        directionDelayTimer.stop();
+
+    prevDirection = JoyDPadButton::DpadCentered;
+    pendingDirection = JoyDPadButton::DpadCentered;
+    activeDiagonalButton = nullptr;
+
+    for (JoyDPadButton *button : buttons)
+    {
+        if (button != nullptr)
+            button->suspensionReset();
+    }
+}

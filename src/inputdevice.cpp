@@ -19,8 +19,10 @@
 #include "inputdevice.h"
 
 #include "antimicrosettings.h"
+#include "joycontrolstick.h"
 #include "common.h"
 #include "globalvariables.h"
+#include "joybuttontypes/joyaxisbutton.h"
 #include "joybuttontypes/joycontrolstickbutton.h"
 #include "joybuttontypes/joydpadbutton.h"
 #include "joybuttontypes/joysensorbutton.h"
@@ -51,6 +53,7 @@ InputDevice::InputDevice(SDL_Joystick *joystick, int deviceIndex, AntiMicroSetti
     m_joyhandle = joystick;
     deviceEdited = false;
     controllerInputEnabled.store(true);
+    nativeGameInputSuspended.store(false);
     keyRepeatEnabled = false;
     keyRepeatDelay = 0;
     keyRepeatRate = 0;
@@ -110,9 +113,12 @@ void InputDevice::transferReset()
     }
 
     // Release the old profile synchronously before its objects are replaced.
-    // Relying on deleteLater() can leave old mouse contributors active while
-    // the newly loaded profile is already processing the captured input state.
-    current_set->release();
+    // During native suspension, use the no-macro reset so profile reloads do
+    // not synthesize releases into a profile that is not receiving input.
+    if (isNativeGameInputSuspended())
+        current_set->suspensionReset();
+    else
+        current_set->release();
 
     reset();
 }
@@ -124,6 +130,8 @@ void InputDevice::reInitButtons()
     for (int i = 0; i < current_set->getNumberButtons(); i++)
     {
         bool value = getButtonstatesLocal().at(i);
+        if (isButtonAwaitingNeutral(i))
+            value = false;
         JoyButton *button = current_set->getJoyButton(i);
         button->queuePendingEvent(value, true);
     }
@@ -132,12 +140,16 @@ void InputDevice::reInitButtons()
     {
         int value = getAxesstatesLocal().at(i);
         JoyAxis *axis = current_set->getJoyAxis(i);
-        axis->queuePendingEvent(value, true);
+        if (isAxisAwaitingNeutral(i))
+            value = axis->getCurrentThrottledDeadValue();
+        axis->queuePendingEvent(value, true, true, false);
     }
 
     for (int i = 0; i < current_set->getNumberHats(); i++)
     {
         int value = getDpadstatesLocal().at(i);
+        if (isHatAwaitingNeutral(i))
+            value = 0;
         JoyDPad *dpad = current_set->getJoyDPad(i);
         dpad->queuePendingEvent(value, true);
     }
@@ -175,7 +187,7 @@ void InputDevice::setActiveSetNumber(int index)
         for (int i = 0; i < current_set->getNumberButtons(); i++)
         {
             JoyButton *button = current_set->getJoyButton(i);
-            buttonstates.append(button->getButtonState());
+            buttonstates.append(button->getButtonState() && !isButtonAwaitingNeutral(i));
             tempSet->getJoyButton(i)->copyLastMouseDistanceFromDeadZone(button);
             tempSet->getJoyButton(i)->resetAccelerationState();
         }
@@ -183,7 +195,7 @@ void InputDevice::setActiveSetNumber(int index)
         for (int i = 0; i < current_set->getNumberAxes(); i++)
         {
             JoyAxis *axis = current_set->getJoyAxis(i);
-            axesstates.append(axis->getCurrentRawValue());
+            axesstates.append(isAxisAwaitingNeutral(i) ? axis->getCurrentThrottledDeadValue() : axis->getCurrentRawValue());
             tempSet->getJoyAxis(i)->copyRawValues(axis);
             tempSet->getJoyAxis(i)->copyThrottledValues(axis);
             JoyAxisButton *button = tempSet->getJoyAxis(i)->getAxisButtonByValue(axis->getCurrentRawValue());
@@ -197,7 +209,7 @@ void InputDevice::setActiveSetNumber(int index)
         for (int i = 0; i < current_set->getNumberHats(); i++)
         {
             JoyDPad *dpad = current_set->getJoyDPad(i);
-            dpadstates.append(dpad->getCurrentDirection());
+            dpadstates.append(isHatAwaitingNeutral(i) ? 0 : dpad->getCurrentDirection());
             JoyDPadButton::JoyDPadDirections tempDir =
                 static_cast<JoyDPadButton::JoyDPadDirections>(dpad->getCurrentDirection());
             tempSet->getJoyDPad(i)->copyLastDistanceValues(dpad);
@@ -214,7 +226,9 @@ void InputDevice::setActiveSetNumber(int index)
             // Last distances for elements are taken from associated axes.
             // Copying is not required here.
             JoyControlStick *stick = current_set->getJoyStick(i);
-            stickstates.append(stick->getCurrentDirection());
+            const bool stickLatched = isAxisAwaitingNeutral(stick->getAxisX()->getIndex()) ||
+                                      isAxisAwaitingNeutral(stick->getAxisY()->getIndex());
+            stickstates.append(stickLatched ? JoyControlStick::StickCentered : stick->getCurrentDirection());
             // Treat held directions as newly activated in the destination set so
             // time-based mouse acceleration cannot carry across set changes.
             const auto destinationButtons =
@@ -228,8 +242,11 @@ void InputDevice::setActiveSetNumber(int index)
 
         for (int i = 0; i < current_set->getNumberVDPads(); i++)
         {
-            JoyDPad *dpad = current_set->getVDPad(i);
-            vdpadstates.append(dpad->getCurrentDirection());
+            VDPad *dpad = current_set->getVDPad(i);
+            const bool dpadLatched =
+                isButtonSourceAwaitingNeutral(dpad->getUpButton()) || isButtonSourceAwaitingNeutral(dpad->getDownButton()) ||
+                isButtonSourceAwaitingNeutral(dpad->getLeftButton()) || isButtonSourceAwaitingNeutral(dpad->getRightButton());
+            vdpadstates.append(dpadLatched ? 0 : dpad->getCurrentDirection());
             JoyDPadButton::JoyDPadDirections tempDir =
                 static_cast<JoyDPadButton::JoyDPadDirections>(dpad->getCurrentDirection());
             tempSet->getVDPad(i)->copyLastDistanceValues(dpad);
@@ -242,7 +259,10 @@ void InputDevice::setActiveSetNumber(int index)
         }
 
         // Release all current pressed elements and change set number
-        getJoystick_sets().value(active_set)->release();
+        if (isNativeGameInputSuspended())
+            getJoystick_sets().value(active_set)->suspensionReset();
+        else
+            getJoystick_sets().value(active_set)->release();
         active_set = index;
 
         // Activate all buttons in the switched set
@@ -481,7 +501,7 @@ void InputDevice::setActiveSetNumber(int index)
                 axis->getNAxisButton()->setWhileHeldStatus(false);
             }
 
-            axis->queuePendingEvent(value, tempignore, false);
+            axis->queuePendingEvent(value, tempignore, false, false);
         }
 
         // Activate all dpad buttons in the switched set
@@ -732,7 +752,77 @@ void InputDevice::removeControlStick(int index)
 
 bool InputDevice::isActive() { return buttonDownCount > 0; }
 
-bool InputDevice::isControllerInputEnabled() const { return controllerInputEnabled.load(); }
+bool InputDevice::isControllerInputEnabled() const
+{
+    return controllerInputEnabled.load();
+}
+
+bool InputDevice::isEffectiveInputEnabled() const { return controllerInputEnabled.load() && !nativeGameInputSuspended.load(); }
+
+bool InputDevice::isManuallyControllerInputEnabled() const { return controllerInputEnabled.load(); }
+
+bool InputDevice::isNativeGameInputSuspended() const { return nativeGameInputSuspended.load(); }
+
+void InputDevice::setNativeGameInputSuspended(bool suspended) { nativeGameInputSuspended.store(suspended); }
+
+void InputDevice::initializeInputReleaseLatch(const QVector<bool> &buttons, const QVector<int> &hats,
+                                             const QVector<int> &axes)
+{
+    QVector<bool> axesInDeadZone;
+    QVector<int> calibratedAxes;
+    axesInDeadZone.reserve(axes.size());
+    calibratedAxes.reserve(axes.size());
+    SetJoystick *activeSet = getActiveSetJoystick();
+    for (int i = 0; i < axes.size(); ++i)
+    {
+        JoyAxis *axis = activeSet->getJoyAxis(i);
+        const int calibratedValue = axis == nullptr ? axes.at(i) : axis->getCalibratedValue(axes.at(i));
+        calibratedAxes.append(calibratedValue);
+        axesInDeadZone.append(axis == nullptr || axis->inDeadZone(calibratedValue));
+    }
+
+    QVector<InputReleaseLatch::StickPair> stickPairs;
+    stickPairs.reserve(activeSet->getNumberSticks());
+    for (int i = 0; i < activeSet->getNumberSticks(); ++i)
+    {
+        JoyControlStick *stick = activeSet->getJoyStick(i);
+        if (stick == nullptr || stick->getAxisX() == nullptr || stick->getAxisY() == nullptr)
+            continue;
+
+        stickPairs.append({stick->getAxisX()->getIndex(), stick->getAxisY()->getIndex(), stick->getDeadZone()});
+    }
+
+    inputReleaseLatch.reset(buttons, hats, calibratedAxes, axesInDeadZone, stickPairs);
+}
+
+bool InputDevice::allowButtonEvent(int index, bool pressed) { return inputReleaseLatch.allowButtonEvent(index, pressed); }
+
+bool InputDevice::allowHatEvent(int index, int direction) { return inputReleaseLatch.allowHatEvent(index, direction); }
+
+bool InputDevice::allowAxisEvent(int index, int value)
+{
+    JoyAxis *axis = getActiveSetJoystick()->getJoyAxis(index);
+    const int calibratedValue = axis == nullptr ? value : axis->getCalibratedValue(value);
+    return inputReleaseLatch.allowAxisEvent(index, calibratedValue, axis == nullptr || axis->inDeadZone(calibratedValue));
+}
+
+bool InputDevice::isButtonAwaitingNeutral(int index) const { return inputReleaseLatch.isButtonLatched(index); }
+
+bool InputDevice::isHatAwaitingNeutral(int index) const { return inputReleaseLatch.isHatLatched(index); }
+
+bool InputDevice::isAxisAwaitingNeutral(int index) const { return inputReleaseLatch.isAxisLatched(index); }
+
+bool InputDevice::isButtonSourceAwaitingNeutral(JoyButton *button) const
+{
+    if (button == nullptr)
+        return false;
+
+    const JoyAxisButton *axisButton = dynamic_cast<const JoyAxisButton *>(button);
+    if (axisButton != nullptr && axisButton->getAxis() != nullptr)
+        return isAxisAwaitingNeutral(axisButton->getAxis()->getIndex());
+
+    return isButtonAwaitingNeutral(button->getJoyNumber());
+}
 
 void InputDevice::buttonDownEvent(int setindex, int buttonindex)
 {
@@ -1475,7 +1565,13 @@ void InputDevice::activatePossibleControlStickEvents()
     {
         JoyControlStick *tempStick = currentSet->getJoyStick(i);
 
-        if ((tempStick != nullptr) && tempStick->hasPendingEvent())
+        if (tempStick == nullptr || !tempStick->hasPendingEvent())
+            continue;
+
+        if (!isEffectiveInputEnabled() || isAxisAwaitingNeutral(tempStick->getAxisX()->getIndex()) ||
+            isAxisAwaitingNeutral(tempStick->getAxisY()->getIndex()))
+            tempStick->clearPendingEvent();
+        else
         {
             tempStick->activatePendingEvent();
         }
@@ -1490,7 +1586,12 @@ void InputDevice::activatePossibleAxisEvents()
     {
         JoyAxis *tempAxis = currentSet->getJoyAxis(i);
 
-        if ((tempAxis != nullptr) && tempAxis->hasPendingEvent())
+        if (tempAxis == nullptr || !tempAxis->hasPendingEvent())
+            continue;
+
+        if (!isEffectiveInputEnabled() || isAxisAwaitingNeutral(tempAxis->getIndex()))
+            tempAxis->clearPendingEvent();
+        else
         {
             tempAxis->activatePendingEvent();
         }
@@ -1507,7 +1608,12 @@ void InputDevice::activatePossibleSensorEvents()
         JoySensorType type = static_cast<JoySensorType>(i);
         sensor = currentSet->getSensor(type);
         if ((sensor != nullptr) && sensor->hasPendingEvent())
-            sensor->activatePendingEvent();
+        {
+            if (!isEffectiveInputEnabled())
+                sensor->clearPendingEvent();
+            else
+                sensor->activatePendingEvent();
+        }
     }
 }
 
@@ -1520,7 +1626,12 @@ void InputDevice::activatePossibleDPadEvents()
         JoyDPad *tempDPad = currentSet->getJoyDPad(i);
 
         if ((tempDPad != nullptr) && tempDPad->hasPendingEvent())
-            tempDPad->activatePendingEvent();
+        {
+            if (!isEffectiveInputEnabled() || isHatAwaitingNeutral(i))
+                tempDPad->clearPendingEvent();
+            else
+                tempDPad->activatePendingEvent();
+        }
     }
 }
 
@@ -1533,7 +1644,17 @@ void InputDevice::activatePossibleVDPadEvents()
         VDPad *tempVDPad = currentSet->getVDPad(i);
 
         if ((tempVDPad != nullptr) && tempVDPad->hasPendingEvent())
-            tempVDPad->activatePendingEvent();
+        {
+            const bool sourceLatched =
+                isButtonSourceAwaitingNeutral(tempVDPad->getUpButton()) ||
+                isButtonSourceAwaitingNeutral(tempVDPad->getDownButton()) ||
+                isButtonSourceAwaitingNeutral(tempVDPad->getLeftButton()) ||
+                isButtonSourceAwaitingNeutral(tempVDPad->getRightButton());
+            if (!isEffectiveInputEnabled() || sourceLatched)
+                tempVDPad->clearPendingEvent();
+            else
+                tempVDPad->activatePendingEvent();
+        }
     }
 }
 
@@ -1546,7 +1667,12 @@ void InputDevice::activatePossibleButtonEvents()
         JoyButton *tempButton = currentSet->getJoyButton(i);
 
         if ((tempButton != nullptr) && tempButton->hasPendingEvent())
-            tempButton->activatePendingEvent();
+        {
+            if (!isEffectiveInputEnabled() || isButtonAwaitingNeutral(i))
+                tempButton->clearPendingEvent();
+            else
+                tempButton->activatePendingEvent();
+        }
     }
 }
 

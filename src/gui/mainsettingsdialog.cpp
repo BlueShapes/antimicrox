@@ -83,6 +83,11 @@ MainSettingsDialog::MainSettingsDialog(AntiMicroSettings *settings, QList<InputD
     QString defaultProfileDir = settings->value("DefaultProfileDir", "").toString();
     int numberRecentProfiles = settings->value("NumberRecentProfiles", 5).toInt();
     bool closeToTray = settings->value("CloseToTray", false).toBool();
+    bool controllableDeltaEnabled = settings->value("NativeGameInput/ControllableDeltaEnabled", true).toBool();
+    ui->controllableDeltaIntegrationCheckBox->setChecked(controllableDeltaEnabled);
+#ifndef Q_OS_WIN
+    ui->controllableDeltaIntegrationCheckBox->setVisible(false);
+#endif
 
     if (!defaultProfileDir.isEmpty() && QDir(defaultProfileDir).exists())
     {
@@ -538,6 +543,8 @@ void MainSettingsDialog::saveNewSettings()
     {
         settings->remove("CloseToTray");
     }
+    settings->setValue("NativeGameInput/ControllableDeltaEnabled",
+                       ui->controllableDeltaIntegrationCheckBox->isChecked() ? "1" : "0");
     settings->getLock()->unlock();
 
     checkLocaleChange();
@@ -1928,6 +1935,7 @@ void MainSettingsDialog::resetGeneralSett()
     ui->hideEmptyCheckBox->setChecked(false);
     ui->autoLoadPreviousCheckBox->setChecked(true);
     ui->launchInTrayCheckBox->setChecked(false);
+    ui->controllableDeltaIntegrationCheckBox->setChecked(true);
     ui->associateProfilesCheckBox->setChecked(true);
     ui->keyRepeatEnableCheckBox->setChecked(false);
     ui->showLowBatteryNotification->setChecked(true);

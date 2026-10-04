@@ -128,6 +128,7 @@ class JoyControlStick : public QObject, public JoyStickDirectionsType
 
     void setJoyMode(JoyMode mode);
     JoyMode getJoyMode();
+    void suspensionReset();
 
     void setButtonsMouseMode(JoyButton::JoyMouseMovementMode mode);
     bool hasSameButtonsMouseMode();

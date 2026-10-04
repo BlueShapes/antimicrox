@@ -30,6 +30,7 @@
 #include "joysensortype.h"
 #include "localantimicroserver.h"
 #include "mainwindow.h"
+#include "nativegameinputmonitor.h"
 #include "setjoystick.h"
 #include "settingsmigration.h"
 
@@ -44,6 +45,7 @@
 #include <QMap>
 #include <QMapIterator>
 #include <QMessageBox>
+#include <QMutexLocker>
 #include <QPointer>
 #include <QSettings>
 #include <QStandardPaths>
@@ -600,13 +602,6 @@ int main(int argc, char *argv[])
     QObject::connect(joypad_worker.data(), &InputDaemon::joystickRefreshed, mainWindow, &MainWindow::fillButtonsID);
     QObject::connect(joypad_worker.data(), &InputDaemon::joysticksRefreshed, mainWindow, &MainWindow::fillButtonsMap);
 
-    QObject::connect(&antimicrox, &QApplication::aboutToQuit, localServer, &LocalAntiMicroServer::close);
-    QObject::connect(&antimicrox, &QApplication::aboutToQuit, mainWindow, &MainWindow::saveAppConfig);
-    QObject::connect(&antimicrox, &QApplication::aboutToQuit, mainWindow, &MainWindow::removeJoyTabs);
-    QObject::connect(&antimicrox, &QApplication::aboutToQuit, &mainAppHelper, &AppLaunchHelper::revertMouseThread);
-    QObject::connect(&antimicrox, &QApplication::aboutToQuit, joypad_worker.data(), &InputDaemon::quit);
-    QObject::connect(&antimicrox, &QApplication::aboutToQuit, joypad_worker.data(), &InputDaemon::deleteLater);
-
     QObject::connect(localServer, &LocalAntiMicroServer::showHiddenWindow, mainWindow, &MainWindow::show);
     QObject::connect(localServer, &LocalAntiMicroServer::clientdisconnect, mainWindow,
                      &MainWindow::handleInstanceDisconnect);
@@ -619,6 +614,30 @@ int main(int argc, char *argv[])
 
     QObject::connect(joypad_worker.data(), &InputDaemon::deviceRemoved, mainWindow, &MainWindow::removeJoyTab);
     QObject::connect(joypad_worker.data(), &InputDaemon::deviceAdded, mainWindow, &MainWindow::addJoyTab);
+
+    NativeGameInputMonitor nativeGameInputMonitor;
+    bool controllableDeltaIntegrationEnabled = true;
+    {
+        QMutexLocker locker(settings.getLock());
+        controllableDeltaIntegrationEnabled = settings.value(QStringLiteral("NativeGameInput/ControllableDeltaEnabled"), true).toBool();
+    }
+    QObject::connect(&nativeGameInputMonitor, &NativeGameInputMonitor::suspensionChanged, joypad_worker.data(),
+                     &InputDaemon::setNativeGameInputSuspended, Qt::QueuedConnection);
+    QObject::connect(&nativeGameInputMonitor, &NativeGameInputMonitor::suspensionChanged, mainWindow,
+                     &MainWindow::setNativeGameInputSuspended, Qt::QueuedConnection);
+    QObject::connect(mainWindow, &MainWindow::controllableDeltaIntegrationChanged, &nativeGameInputMonitor,
+                     &NativeGameInputMonitor::setEnabled);
+
+    // Stop monitoring before tearing down tabs and the input worker. The monitor
+    // remains in the GUI thread for its full lifetime.
+    QObject::connect(&antimicrox, &QApplication::aboutToQuit, &nativeGameInputMonitor,
+                     &NativeGameInputMonitor::close, Qt::DirectConnection);
+    QObject::connect(&antimicrox, &QApplication::aboutToQuit, localServer, &LocalAntiMicroServer::close);
+    QObject::connect(&antimicrox, &QApplication::aboutToQuit, mainWindow, &MainWindow::saveAppConfig);
+    QObject::connect(&antimicrox, &QApplication::aboutToQuit, mainWindow, &MainWindow::removeJoyTabs);
+    QObject::connect(&antimicrox, &QApplication::aboutToQuit, &mainAppHelper, &AppLaunchHelper::revertMouseThread);
+    QObject::connect(&antimicrox, &QApplication::aboutToQuit, joypad_worker.data(), &InputDaemon::quit);
+    QObject::connect(&antimicrox, &QApplication::aboutToQuit, joypad_worker.data(), &InputDaemon::deleteLater);
 
     mainAppHelper.initRunMethods();
 
@@ -633,6 +652,7 @@ int main(int argc, char *argv[])
     joypad_worker->moveToThread(inputEventThread);
     PadderCommon::mouseHelperObj.moveToThread(inputEventThread);
     inputEventThread->start(QThread::HighPriority);
+    nativeGameInputMonitor.setEnabled(controllableDeltaIntegrationEnabled);
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0) && defined(Q_OS_UNIX)
     QDBusConnection connection = QDBusConnection::sessionBus();
     const QString dbusServiceName = ProductIdentity::dbusService;

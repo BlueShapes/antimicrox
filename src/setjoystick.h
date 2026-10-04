@@ -73,6 +73,7 @@ class SetJoystick : public SetJoystickXml
     virtual void refreshHats();    // SetHat class
     virtual void refreshSensors();
     void release();
+    void suspensionReset();
     void addControlStick(int index, JoyControlStick *stick); // SetStick class
     void removeControlStick(int index);                      // SetStick class
     void addVDPad(int index, VDPad *vdpad);                  // SetVDPad class

@@ -55,7 +55,8 @@ class JoyAxis : public QObject
     };
 
     void joyEvent(int value, bool ignoresets = false, bool updateLastValues = true);          // JoyAxisEvent class
-    void queuePendingEvent(int value, bool ignoresets = false, bool updateLastValues = true); // JoyAxisEvent class
+    void queuePendingEvent(int value, bool ignoresets = false, bool updateLastValues = true,
+                           bool applyCalibration = true); // JoyAxisEvent class
     void activatePendingEvent();                                                              // JoyAxisEvent class
     bool hasPendingEvent();                                                                   // JoyAxisEvent class
     void clearPendingEvent();                                                                 // JoyAxisEvent class
@@ -81,6 +82,7 @@ class JoyAxis : public QObject
     int getThrottle();
     int getCurrentThrottledValue();
     int getCurrentRawValue();
+    int getCalibratedValue(int rawValue) const;
     int getCurrentThrottledDeadValue();
     int getCurrentlyAssignedSet();
     JoyAxisButton *getAxisButtonByValue(int value);
@@ -151,6 +153,7 @@ class JoyAxis : public QObject
     JoyButton::JoyExtraAccelerationCurve getExtraAccelerationCurve();
 
     virtual void eventReset(); // JoyAxisEvent class
+    void suspensionReset();
 
     static const ThrottleTypes DEFAULTTHROTTLE;
     int calculateThrottledValue(int value);

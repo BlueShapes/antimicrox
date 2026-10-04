@@ -356,6 +356,45 @@ void SetJoystick::release()
     }
 }
 
+void SetJoystick::suspensionReset()
+{
+    for (JoyAxis *axis : axes)
+    {
+        if (axis != nullptr)
+            axis->suspensionReset();
+    }
+
+    for (JoyControlStick *stick : getSticks())
+    {
+        if (stick != nullptr)
+            stick->suspensionReset();
+    }
+
+    for (JoyDPad *dpad : getHats())
+    {
+        if (dpad != nullptr)
+            dpad->suspensionReset();
+    }
+
+    for (VDPad *dpad : getVdpads())
+    {
+        if (dpad != nullptr)
+            dpad->suspensionReset();
+    }
+
+    for (JoySensor *sensor : getSensors())
+    {
+        if (sensor != nullptr)
+            sensor->suspensionReset();
+    }
+
+    for (JoyButton *button : getButtons())
+    {
+        if (button != nullptr)
+            button->suspensionReset();
+    }
+}
+
 /**
  * @brief Check if this set has any mapped event.
  * @returns True if any event is mapped to a keyboard or mouse event, false otherwise.

@@ -3833,6 +3833,14 @@ to buttons or disable hiding empty buttons.</source>
 <context>
     <name>MainSettingsDialog</name>
     <message>
+        <source>Pause mapped output from all controllers while Controllable Delta controls Minecraft</source>
+        <translation>Controllable Delta で Minecraft を操作中は、全コントローラーの変換出力を一時停止する</translation>
+    </message>
+    <message>
+        <source>When Controllable Delta is ready and Minecraft is the foreground window, suspend mapped output from all controllers until the game is released.</source>
+        <translation>Controllable Delta が入力を取得でき、Minecraft が最前面にある間、全コントローラーの変換出力を一時停止します。</translation>
+    </message>
+    <message>
         <location filename="../../../src/gui/mainsettingsdialog.ui" line="29"/>
         <source>Edit Settings</source>
         <translation type="unfinished"></translation>
@@ -4430,6 +4438,30 @@ the option in Windows.</source>
 </context>
 <context>
     <name>MainWindow</name>
+    <message>
+        <source>Controller output paused by Controllable Delta</source>
+        <translation>Controllable Delta のためコントローラーの変換出力を一時停止中</translation>
+    </message>
+    <message>
+        <source>Mapped output from all controllers resumes when Controllable Delta releases Minecraft.</source>
+        <translation>Minecraft が最前面でなくなるか、Controllable Delta の入力が利用不可になると、全コントローラーの変換出力を再開します。</translation>
+    </message>
+    <message>
+        <source>Mapped output from all controllers is paused</source>
+        <translation>全コントローラーの変換出力を一時停止中</translation>
+    </message>
+    <message>
+        <source>Controllable Delta is controlling Minecraft. All mapped controller output will resume when it releases the game.</source>
+        <translation>Controllable Delta で Minecraft を操作中です。Minecraft が最前面でなくなるか、入力が利用不可になると変換出力を再開します。</translation>
+    </message>
+    <message>
+        <source>%1 — paused by Controllable Delta</source>
+        <translation>%1 — Controllable Delta との連携で一時停止中</translation>
+    </message>
+    <message>
+        <source>Mapped output from all controllers is paused while Controllable Delta controls Minecraft</source>
+        <translation>Controllable Delta で Minecraft を操作中のため、全コントローラーの変換出力を一時停止しています</translation>
+    </message>
     <message>
         <location filename="../../../src/gui/mainwindow.ui" line="23"/>
         <source>AntiMicroX</source>

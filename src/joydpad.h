@@ -109,6 +109,7 @@ class JoyDPad : public QObject
     void copyLastDistanceValues(JoyDPad *srcDPad);
 
     virtual void eventReset(); // JoyDPadEvent class
+    virtual void suspensionReset();
 
   signals:
     void active(int value);

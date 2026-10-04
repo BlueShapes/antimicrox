@@ -21,6 +21,7 @@
 #include "event.h"
 #include "globalvariables.h"
 #include "inputdevice.h"
+#include "inputreleaselatch.h"
 #include "joyaxis.h"
 #include "joycontrolstick.h"
 #include "setjoystick.h"
@@ -53,10 +54,17 @@ JoyAxis::JoyAxis(int index, int originset, SetJoystick *parentSet, QObject *pare
 
 JoyAxis::~JoyAxis() { resetPrivateVars(); }
 
-void JoyAxis::queuePendingEvent(int value, bool ignoresets, bool updateLastValues)
+void JoyAxis::queuePendingEvent(int value, bool ignoresets, bool updateLastValues, bool applyCalibration)
 {
-    if (m_calibrated)
-        value = value * m_gain + m_offset;
+    InputDevice *device = m_parentSet->getInputDevice();
+    if (!device->isEffectiveInputEnabled() || device->isAxisAwaitingNeutral(m_index))
+    {
+        clearPendingEvent();
+        return;
+    }
+
+    if (applyCalibration)
+        value = getCalibratedValue(value);
 
     if (m_stick != nullptr)
     {
@@ -461,6 +469,11 @@ JoyAxisButton *JoyAxis::getPAxisButton() { return paxisbutton; }
 JoyAxisButton *JoyAxis::getNAxisButton() { return naxisbutton; }
 
 int JoyAxis::getCurrentRawValue() { return currentRawValue; }
+
+int JoyAxis::getCalibratedValue(int rawValue) const
+{
+    return m_calibrated ? InputReleaseLatch::calibrateAxisValue(rawValue, m_gain, m_offset) : rawValue;
+}
 
 void JoyAxis::adjustRange()
 {
@@ -912,6 +925,20 @@ void JoyAxis::eventReset()
 {
     naxisbutton->eventReset();
     paxisbutton->eventReset();
+}
+
+void JoyAxis::suspensionReset()
+{
+    clearPendingEvent();
+    naxisbutton->suspensionReset();
+    paxisbutton->suspensionReset();
+    setCurrentRawValue(currentThrottledDeadValue);
+    currentThrottledValue = calculateThrottledValue(currentRawValue);
+    lastKnownRawValue = currentRawValue;
+    lastKnownThottledValue = currentThrottledValue;
+    isActive = false;
+    eventActive = false;
+    activeButton = nullptr;
 }
 
 /**

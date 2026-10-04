@@ -415,6 +415,9 @@ void MainWindow::startJoystickRefresh()
 
 void MainWindow::populateTrayIcon()
 {
+    if (trayIconMenu == nullptr || trayIcon == nullptr)
+        return;
+
     disconnect(trayIconMenu, &QMenu::aboutToShow, this, &MainWindow::singleTrayProfileMenuShow);
 
     trayIconMenu->clear();
@@ -620,6 +623,14 @@ void MainWindow::populateTrayIcon()
         trayIconMenu->addSeparator();
     }
 
+    if (nativeGameInputSuspended)
+    {
+        QAction *pausedAction = trayIconMenu->addAction(tr("Controller output paused by Controllable Delta"));
+        pausedAction->setEnabled(false);
+        pausedAction->setStatusTip(
+            tr("Mapped output from all controllers resumes when Controllable Delta releases Minecraft."));
+    }
+
     trayIconMenu->addAction(hideAction);
     trayIconMenu->addAction(restoreAction);
     trayIconMenu->addAction(updateJoy);
@@ -629,6 +640,7 @@ void MainWindow::populateTrayIcon()
                                        ":/images/antimicrox.png");
     trayIcon->setIcon(icon);
     trayIcon->setContextMenu(trayIconMenu);
+    updateNativeGameInputStatus();
 
     qDebug() << "end of MainWindow::populateTrayIcon function";
 }
@@ -692,6 +704,14 @@ void MainWindow::refreshControllerMenu()
     ui->menuController->clear();
     ui->menuController->addSection(tr("Controller input"));
 
+    if (nativeGameInputSuspended)
+    {
+        QAction *pausedAction = ui->menuController->addAction(tr("Mapped output from all controllers is paused"));
+        pausedAction->setEnabled(false);
+        pausedAction->setStatusTip(
+            tr("Controllable Delta is controlling Minecraft. All mapped controller output will resume when it releases the game."));
+    }
+
     QMap<int, InputDevice *> orderedDevices;
     for (InputDevice *device : m_joysticks->values())
     {
@@ -745,6 +765,34 @@ void MainWindow::trayIconClickAction(QSystemTrayIcon::ActivationReason reason)
         {
             this->hideWindow();
         }
+    }
+}
+
+void MainWindow::setNativeGameInputSuspended(bool suspended)
+{
+    if (nativeGameInputSuspended == suspended)
+        return;
+
+    nativeGameInputSuspended = suspended;
+    updateNativeGameInputStatus();
+
+    if (showTrayIcon)
+        populateTrayIcon();
+    if (ui->menuController->isVisible())
+        refreshControllerMenu();
+}
+
+void MainWindow::updateNativeGameInputStatus()
+{
+    setWindowTitle(nativeGameInputSuspended
+                       ? tr("%1 — paused by Controllable Delta").arg(ProductIdentity::displayName)
+                       : ProductIdentity::displayName);
+
+    if (trayIcon != nullptr)
+    {
+        trayIcon->setToolTip(nativeGameInputSuspended
+                                 ? tr("Mapped output from all controllers is paused while Controllable Delta controls Minecraft")
+                                 : ProductIdentity::displayName);
     }
 }
 
@@ -1315,6 +1363,14 @@ void MainWindow::openMainSettingsDialog()
 
     connect(dialog, &MainSettingsDialog::accepted, this, &MainWindow::populateTrayIcon);
     connect(dialog, &MainSettingsDialog::accepted, this, &MainWindow::checkHideEmptyOption);
+    connect(dialog, &MainSettingsDialog::accepted, this, [this] {
+        bool enabled = true;
+        {
+            QMutexLocker locker(m_settings->getLock());
+            enabled = m_settings->value(QStringLiteral("NativeGameInput/ControllableDeltaEnabled"), true).toBool();
+        }
+        emit controllableDeltaIntegrationChanged(enabled);
+    });
 
     dialog->show();
 }

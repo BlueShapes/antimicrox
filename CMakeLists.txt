@@ -150,6 +150,9 @@ endif(UNIX)
 set(antimicrox_MAIN src/main.cpp)
 
 set(antimicrox_SOURCES
+        src/inputreleaselatch.cpp
+        src/nativegameinputstate.cpp
+        src/nativegameinputmonitor.cpp
         src/applicationsecuritypolicy.cpp
         src/productidentity.cpp
         src/settingsmigration.cpp
@@ -287,6 +290,9 @@ set(antimicrox_SOURCES
         )
 
 set(antimicrox_HEADERS
+        src/inputreleaselatch.h
+        src/nativegameinputstate.h
+        src/nativegameinputmonitor.h
         src/applicationsecuritypolicy.h
         src/productidentity.h
         src/settingsmigration.h
@@ -633,7 +639,7 @@ if(UNIX)
 #        set(SDL2_LIBRARIES SDL2::SDL2)
 #    endif()
 elseif (WIN32)
-    list(APPEND WIN_LIBS "psapi" "dbghelp")
+    list(APPEND WIN_LIBS "psapi" "dbghelp" "advapi32" "user32")
 endif(UNIX)
 
 
@@ -863,6 +869,11 @@ configure_file(
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/CHANGELOG.md DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/src/)
 
 if(BUILD_TESTING)
+    add_subdirectory(tests/nativegameinput)
+    add_subdirectory(tests/inputreleaselatch)
+    if(WIN32)
+        add_subdirectory(tests/inputsuspension)
+    endif()
     add_subdirectory(tests/productidentity)
     add_subdirectory(tests/securitypolicy)
     add_subdirectory(tests/crashlogging)

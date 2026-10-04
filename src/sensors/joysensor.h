@@ -114,6 +114,7 @@ class JoySensor : public QObject
 
   public slots:
     virtual void reset();
+    virtual void suspensionReset();
     void setDeadZone(double value);
     void setMaxZone(double value);
     void setDiagonalRange(double value);

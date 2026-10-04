@@ -93,6 +93,7 @@ class MainWindow : public QMainWindow
     void mappingUpdated(QString mapping, InputDevice *device);
     void controllerInputEnabledChanged(InputDevice *device, bool enabled);
     void mouseAccelerationResetRequested();
+    void controllableDeltaIntegrationChanged(bool enabled);
 
   public slots:
     void checkEachTenMinutesBattery(QMap<SDL_JoystickID, InputDevice *> *joysticks);
@@ -114,6 +115,7 @@ class MainWindow : public QMainWindow
     void addJoyTab(InputDevice *device);
     void selectControllerJoyTab(QString GUID);
     void handleInstanceDisconnect();
+    void setNativeGameInputSuspended(bool suspended);
 
   private slots:
     void refreshTrayIconMenu();
@@ -151,6 +153,7 @@ class MainWindow : public QMainWindow
     void configureAutoProfileUi(JoyTabWidget *tabwidget);
     void initializeControllerInputState(InputDevice *device);
     QString controllerInputSettingsKey(InputDevice *device) const;
+    void updateNativeGameInputStatus();
 
     /**
      * @brief Check state of batteries in controllers and notify user (only when powerLevSDL matches current battery level)
@@ -179,6 +182,7 @@ class MainWindow : public QMainWindow
     bool signalDisconnect;
     bool showTrayIcon;
     bool m_graphical;
+    bool nativeGameInputSuspended = false;
     bool autoProfilePaused = false;
 
 #ifdef CHECK_FOR_UPDATES

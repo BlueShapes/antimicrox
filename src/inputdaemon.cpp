@@ -21,7 +21,9 @@
 #include "antimicrosettings.h"
 #include "common.h"
 #include "globalvariables.h"
+#include "gamecontroller/gamecontroller.h"
 #include "inputdevicebitarraystatus.h"
+#include "joycontrolstick.h"
 #include "joydpad.h"
 #include "joysensor.h"
 #include "joystick.h"
@@ -31,6 +33,7 @@
 #include <QDebug>
 #include <QEventLoop>
 #include <QMapIterator>
+#include <QMutexLocker>
 #include <QThread>
 #include <QTime>
 #include <QTimer>
@@ -44,6 +47,9 @@ InputDaemon::InputDaemon(QMap<SDL_JoystickID, InputDevice *> *joysticks, AntiMic
     // Xbox360Wireless* xbox360class = new Xbox360Wireless();
     // xbox360 = xbox360class->getResult();
     this->stopped = false;
+    m_nativeGameInputSuspended = false;
+    m_resumeTimestamp = 0;
+    m_resumeCutoffActive = false;
     m_graphical = graphical;
     m_settings = settings;
 
@@ -223,6 +229,7 @@ void InputDaemon::refreshJoysticks()
 
                         GameController *damncontroller =
                             new GameController(controller, index, m_settings, resultDuplicated, this);
+                        damncontroller->setNativeGameInputSuspended(m_nativeGameInputSuspended);
                         duplicatedGamepad = false;
                         connect(damncontroller, &GameController::requestWait, eventWorker, &SDLEventReader::haltServices);
                         m_joysticks->insert(tempJoystickID, damncontroller);
@@ -252,6 +259,12 @@ void InputDaemon::refreshJoysticks()
 
     m_settings->endGroup();
     m_settings->getLock()->unlock();
+
+    for (InputDevice *device : m_joysticks->values())
+    {
+        if (device != nullptr)
+            device->setNativeGameInputSuspended(m_nativeGameInputSuspended);
+    }
 
     emit joysticksRefreshed(m_joysticks);
 }
@@ -297,6 +310,16 @@ void InputDaemon::refresh()
 void InputDaemon::refreshJoystick(InputDevice *joystick)
 {
     joystick->reset();
+    joystick->setNativeGameInputSuspended(m_nativeGameInputSuspended);
+    if (m_nativeGameInputSuspended)
+    {
+        for (SetJoystick *set : joystick->getJoystick_sets())
+        {
+            if (set != nullptr)
+                set->suspensionReset();
+        }
+        joystick->resetButtonDownCount();
+    }
 
     emit joystickRefreshed(joystick);
 }
@@ -384,6 +407,7 @@ void InputDaemon::refreshMapping(QString mapping, InputDevice *device)
                         resultDuplicated = counterUniques;
 
                     GameController *damncontroller = new GameController(controller, i, m_settings, resultDuplicated, this);
+                    damncontroller->setNativeGameInputSuspended(m_nativeGameInputSuspended);
                     duplicatedGamepad = false;
                     connect(damncontroller, &GameController::requestWait, eventWorker, &SDLEventReader::haltServices);
                     SDL_Joystick *sdlStick = SDL_GameControllerGetJoystick(controller);
@@ -465,6 +489,7 @@ void InputDaemon::addInputDevice(int index, QMap<QString, int> &uniques, int &co
                 if (!disableGameController)
                 {
                     GameController *damncontroller = new GameController(controller, index, m_settings, this);
+                    damncontroller->setNativeGameInputSuspended(m_nativeGameInputSuspended);
                     connect(damncontroller, &GameController::requestWait, eventWorker, &SDLEventReader::haltServices);
                     m_joysticks->insert(tempJoystickID, damncontroller);
                     trackcontrollers.insert(tempJoystickID, damncontroller);
@@ -591,6 +616,7 @@ void InputDaemon::addInputDevice(int index, QMap<QString, int> &uniques, int &co
                     {
                         GameController *damncontroller =
                             new GameController(controller, index, m_settings, resultDuplicated, this);
+                        damncontroller->setNativeGameInputSuspended(m_nativeGameInputSuspended);
                         connect(damncontroller, &GameController::requestWait, eventWorker, &SDLEventReader::haltServices);
                         m_joysticks->insert(tempJoystickID_local_2, damncontroller);
                         trackcontrollers.insert(tempJoystickID_local_2, damncontroller);
@@ -610,6 +636,7 @@ void InputDaemon::addInputDevice(int index, QMap<QString, int> &uniques, int &co
             } else
             {
                 Joystick *curJoystick = new Joystick(joystick, index, m_settings, this);
+                curJoystick->setNativeGameInputSuspended(m_nativeGameInputSuspended);
                 m_joysticks->insert(tempJoystickID_local, curJoystick);
                 getTrackjoysticksLocal().insert(tempJoystickID_local, curJoystick);
 
@@ -638,6 +665,7 @@ Joystick *InputDaemon::openJoystickDevice(int index)
         SDL_JoystickID tempJoystickID = SDL_JoystickInstanceID(joystick);
 
         curJoystick = new Joystick(joystick, index, m_settings, this);
+        curJoystick->setNativeGameInputSuspended(m_nativeGameInputSuspended);
         m_joysticks->insert(tempJoystickID, curJoystick);
         getTrackjoysticksLocal().insert(tempJoystickID, curJoystick);
     }
@@ -705,13 +733,73 @@ void InputDaemon::firstInputPass(QQueue<SDL_Event> *sdlEventQueue)
                     << (trackcontrollers.contains(event.jbutton.which) ? "true" : "false") << " is one of the joysticks:"
                     << (getTrackjoysticksLocal().contains(event.jbutton.which) ? "true" : "false");
         }
+        // Input edges collected while the native application owned input may
+        // still be queued after the resume snapshot. Preserve raw telemetry,
+        // but do not add historical edges to a mapped profile.
+        if (isPreResumeInputEvent(event))
+        {
+            switch (event.type)
+            {
+            case SDL_JOYBUTTONDOWN:
+            case SDL_JOYBUTTONUP: {
+                InputDevice *joy = getTrackjoysticksLocal().value(event.jbutton.which);
+                GameController *gamepad = dynamic_cast<GameController *>(joy);
+                if (gamepad != nullptr)
+                    gamepad->rawButtonEvent(event.jbutton.button, event.type == SDL_JOYBUTTONDOWN);
+                break;
+            }
+            case SDL_JOYAXISMOTION: {
+                InputDevice *joy = getTrackjoysticksLocal().value(event.jaxis.which);
+                if (joy != nullptr)
+                {
+                    GameController *gamepad = dynamic_cast<GameController *>(joy);
+                    if (gamepad != nullptr)
+                        gamepad->rawAxisEvent(event.jaxis.axis, event.jaxis.value);
+                    else
+                        joy->rawAxisEvent(event.jaxis.axis, event.jaxis.value);
+                }
+                break;
+            }
+            case SDL_JOYHATMOTION: {
+                InputDevice *joy = getTrackjoysticksLocal().value(event.jhat.which);
+                GameController *gamepad = dynamic_cast<GameController *>(joy);
+                if (gamepad != nullptr)
+                    gamepad->rawDPadEvent(event.jhat.hat, event.jhat.value);
+                break;
+            }
+            case SDL_CONTROLLERAXISMOTION: {
+                GameController *gamepad = trackcontrollers.value(event.caxis.which);
+                if (gamepad != nullptr)
+                    gamepad->rawAxisEvent(event.caxis.axis, event.caxis.value);
+                break;
+            }
+            case SDL_CONTROLLERBUTTONDOWN:
+            case SDL_CONTROLLERBUTTONUP: {
+                GameController *gamepad = trackcontrollers.value(event.cbutton.which);
+                if (gamepad != nullptr)
+                    gamepad->rawButtonEvent(event.cbutton.button, event.type == SDL_CONTROLLERBUTTONDOWN);
+                break;
+            }
+            default:
+                // Sensor events have no raw-mapping signal. Dropping this
+                // stale sample prevents it from activating configured sensors.
+                break;
+            }
+            continue;
+        }
+
         switch (event.type)
         {
         case SDL_JOYBUTTONDOWN:
         case SDL_JOYBUTTONUP: {
             InputDevice *joy = getTrackjoysticksLocal().value(event.jbutton.which);
 
-            if (joy != nullptr && !joy->isControllerInputEnabled())
+            if (joy != nullptr && joy->isNativeGameInputSuspended())
+            {
+                sdlEventQueue->append(event);
+                break;
+            }
+            if (joy != nullptr && !joy->isEffectiveInputEnabled())
                 break;
 
             if (joy != nullptr)
@@ -735,7 +823,12 @@ void InputDaemon::firstInputPass(QQueue<SDL_Event> *sdlEventQueue)
         case SDL_JOYAXISMOTION: {
             InputDevice *joy = getTrackjoysticksLocal().value(event.jaxis.which);
 
-            if (joy != nullptr && !joy->isControllerInputEnabled())
+            if (joy != nullptr && joy->isNativeGameInputSuspended())
+            {
+                sdlEventQueue->append(event);
+                break;
+            }
+            if (joy != nullptr && !joy->isEffectiveInputEnabled())
                 break;
 
             if (joy != nullptr)
@@ -762,7 +855,12 @@ void InputDaemon::firstInputPass(QQueue<SDL_Event> *sdlEventQueue)
         case SDL_JOYHATMOTION: {
             InputDevice *joy = getTrackjoysticksLocal().value(event.jhat.which);
 
-            if (joy != nullptr && !joy->isControllerInputEnabled())
+            if (joy != nullptr && joy->isNativeGameInputSuspended())
+            {
+                sdlEventQueue->append(event);
+                break;
+            }
+            if (joy != nullptr && !joy->isEffectiveInputEnabled())
                 break;
 
             if (joy != nullptr)
@@ -787,7 +885,12 @@ void InputDaemon::firstInputPass(QQueue<SDL_Event> *sdlEventQueue)
         case SDL_CONTROLLERAXISMOTION: {
             InputDevice *joy = trackcontrollers.value(event.caxis.which);
 
-            if (joy != nullptr && !joy->isControllerInputEnabled())
+            if (joy != nullptr && joy->isNativeGameInputSuspended())
+            {
+                sdlEventQueue->append(event);
+                break;
+            }
+            if (joy != nullptr && !joy->isEffectiveInputEnabled())
                 break;
 
             if (joy != nullptr)
@@ -820,9 +923,14 @@ void InputDaemon::firstInputPass(QQueue<SDL_Event> *sdlEventQueue)
 
 #if SDL_VERSION_ATLEAST(2, 0, 14)
         case SDL_CONTROLLERSENSORUPDATE: {
-            InputDevice *joy = trackcontrollers.value(event.caxis.which);
+            InputDevice *joy = trackcontrollers.value(event.csensor.which);
 
-            if (joy != nullptr && !joy->isControllerInputEnabled())
+            if (joy != nullptr && joy->isNativeGameInputSuspended())
+            {
+                sdlEventQueue->append(event);
+                break;
+            }
+            if (joy != nullptr && !joy->isEffectiveInputEnabled())
                 break;
 
             if (joy != nullptr)
@@ -834,7 +942,10 @@ void InputDaemon::firstInputPass(QQueue<SDL_Event> *sdlEventQueue)
                 else if (event.csensor.sensor == SDL_SENSOR_GYRO)
                     sensor_type = GYROSCOPE;
                 else
+                {
                     qWarning() << "Unknown sensor type: " << event.csensor.sensor;
+                    break;
+                }
 
                 JoySensor *sensor = nullptr;
                 if (sensor_type == ACCELEROMETER || sensor_type == GYROSCOPE)
@@ -861,7 +972,12 @@ void InputDaemon::firstInputPass(QQueue<SDL_Event> *sdlEventQueue)
         case SDL_CONTROLLERBUTTONUP: {
             InputDevice *joy = trackcontrollers.value(event.cbutton.which);
 
-            if (joy != nullptr && !joy->isControllerInputEnabled())
+            if (joy != nullptr && joy->isNativeGameInputSuspended())
+            {
+                sdlEventQueue->append(event);
+                break;
+            }
+            if (joy != nullptr && !joy->isEffectiveInputEnabled())
                 break;
 
             if (joy != nullptr)
@@ -894,6 +1010,35 @@ void InputDaemon::firstInputPass(QQueue<SDL_Event> *sdlEventQueue)
             break;
         }
         }
+    }
+
+    // SDL_PollEvent drains the batch carrying the resume cutoff. Events from
+    // later polls are fresh even if the controller remains idle for days.
+    m_resumeCutoffActive = false;
+}
+
+bool InputDaemon::isPreResumeInputEvent(const SDL_Event &event) const
+{
+    if (!m_resumeCutoffActive)
+        return false;
+
+    switch (event.type)
+    {
+    case SDL_JOYBUTTONDOWN:
+    case SDL_JOYBUTTONUP:
+    case SDL_JOYAXISMOTION:
+    case SDL_JOYHATMOTION:
+    case SDL_CONTROLLERAXISMOTION:
+    case SDL_CONTROLLERBUTTONDOWN:
+    case SDL_CONTROLLERBUTTONUP:
+#if SDL_VERSION_ATLEAST(2, 0, 14)
+    case SDL_CONTROLLERSENSORUPDATE:
+#endif
+        // Signed subtraction handles SDL's 32-bit tick wrap while the
+        // suspension interval remains below half the wrap period.
+        return static_cast<Sint32>(event.common.timestamp - m_resumeTimestamp) <= 0;
+    default:
+        return false;
     }
 }
 
@@ -1065,7 +1210,14 @@ void InputDaemon::secondInputPass(QQueue<SDL_Event> *sdlEventQueue)
         case SDL_JOYBUTTONUP: {
             InputDevice *joy = getTrackjoysticksLocal().value(event.jbutton.which);
 
-            if (joy != nullptr && !joy->isControllerInputEnabled())
+            if (joy != nullptr && joy->isNativeGameInputSuspended())
+            {
+                GameController *gamepad = dynamic_cast<GameController *>(joy);
+                if (gamepad != nullptr)
+                    gamepad->rawButtonEvent(event.jbutton.button, event.type == SDL_JOYBUTTONDOWN);
+                break;
+            }
+            if (joy != nullptr && !joy->isEffectiveInputEnabled())
                 break;
 
             if (joy != nullptr)
@@ -1073,7 +1225,7 @@ void InputDaemon::secondInputPass(QQueue<SDL_Event> *sdlEventQueue)
                 SetJoystick *set = joy->getActiveSetJoystick();
                 JoyButton *button = set->getJoyButton(event.jbutton.button);
 
-                if (button != nullptr)
+                if (button != nullptr && joy->allowButtonEvent(event.jbutton.button, event.type == SDL_JOYBUTTONDOWN))
                 {
                     button->queuePendingEvent(event.type == SDL_JOYBUTTONDOWN ? true : false);
 
@@ -1092,7 +1244,16 @@ void InputDaemon::secondInputPass(QQueue<SDL_Event> *sdlEventQueue)
         case SDL_JOYAXISMOTION: {
             InputDevice *joy = getTrackjoysticksLocal().value(event.jaxis.which);
 
-            if (joy != nullptr && !joy->isControllerInputEnabled())
+            if (joy != nullptr && joy->isNativeGameInputSuspended())
+            {
+                GameController *gamepad = dynamic_cast<GameController *>(joy);
+                if (gamepad != nullptr)
+                    gamepad->rawAxisEvent(event.jaxis.axis, event.jaxis.value);
+                else
+                    joy->rawAxisEvent(event.jaxis.axis, event.jaxis.value);
+                break;
+            }
+            if (joy != nullptr && !joy->isEffectiveInputEnabled())
                 break;
 
             if (joy != nullptr)
@@ -1100,7 +1261,7 @@ void InputDaemon::secondInputPass(QQueue<SDL_Event> *sdlEventQueue)
                 SetJoystick *set = joy->getActiveSetJoystick();
                 JoyAxis *axis = set->getJoyAxis(event.jaxis.axis);
 
-                if (axis != nullptr)
+                if (axis != nullptr && joy->allowAxisEvent(event.jaxis.axis, event.jaxis.value))
                 {
                     axis->queuePendingEvent(event.jaxis.value);
 
@@ -1108,7 +1269,7 @@ void InputDaemon::secondInputPass(QQueue<SDL_Event> *sdlEventQueue)
                         activeDevices.insert(event.jaxis.which, joy);
                 }
 
-                joy->rawAxisEvent(event.jaxis.which, event.jaxis.value);
+                joy->rawAxisEvent(event.jaxis.axis, event.jaxis.value);
             } else if (trackcontrollers.contains(event.jaxis.which))
             {
                 GameController *gamepad = trackcontrollers.value(event.jaxis.which);
@@ -1121,7 +1282,14 @@ void InputDaemon::secondInputPass(QQueue<SDL_Event> *sdlEventQueue)
         case SDL_JOYHATMOTION: {
             InputDevice *joy = getTrackjoysticksLocal().value(event.jhat.which);
 
-            if (joy != nullptr && !joy->isControllerInputEnabled())
+            if (joy != nullptr && joy->isNativeGameInputSuspended())
+            {
+                GameController *gamepad = dynamic_cast<GameController *>(joy);
+                if (gamepad != nullptr)
+                    gamepad->rawDPadEvent(event.jhat.hat, event.jhat.value);
+                break;
+            }
+            if (joy != nullptr && !joy->isEffectiveInputEnabled())
                 break;
 
             if (joy != nullptr)
@@ -1129,7 +1297,7 @@ void InputDaemon::secondInputPass(QQueue<SDL_Event> *sdlEventQueue)
                 SetJoystick *set = joy->getActiveSetJoystick();
                 JoyDPad *dpad = set->getJoyDPad(event.jhat.hat);
 
-                if (dpad != nullptr)
+                if (dpad != nullptr && joy->allowHatEvent(event.jhat.hat, event.jhat.value))
                 {
                     dpad->joyEvent(event.jhat.value);
 
@@ -1138,7 +1306,7 @@ void InputDaemon::secondInputPass(QQueue<SDL_Event> *sdlEventQueue)
                 }
             } else if (trackcontrollers.contains(event.jhat.which))
             {
-                GameController *gamepad = trackcontrollers.value(event.jaxis.which);
+                GameController *gamepad = trackcontrollers.value(event.jhat.which);
                 gamepad->rawDPadEvent(event.jhat.hat, event.jhat.value);
             }
 
@@ -1148,7 +1316,14 @@ void InputDaemon::secondInputPass(QQueue<SDL_Event> *sdlEventQueue)
         case SDL_CONTROLLERAXISMOTION: {
             InputDevice *joy = trackcontrollers.value(event.caxis.which);
 
-            if (joy != nullptr && !joy->isControllerInputEnabled())
+            if (joy != nullptr && joy->isNativeGameInputSuspended())
+            {
+                GameController *gamepad = dynamic_cast<GameController *>(joy);
+                if (gamepad != nullptr)
+                    gamepad->rawAxisEvent(event.caxis.axis, event.caxis.value);
+                break;
+            }
+            if (joy != nullptr && !joy->isEffectiveInputEnabled())
                 break;
 
             if (joy != nullptr)
@@ -1156,7 +1331,7 @@ void InputDaemon::secondInputPass(QQueue<SDL_Event> *sdlEventQueue)
                 SetJoystick *set = joy->getActiveSetJoystick();
                 JoyAxis *axis = set->getJoyAxis(event.caxis.axis);
 
-                if (axis != nullptr)
+                if (axis != nullptr && joy->allowAxisEvent(event.caxis.axis, event.caxis.value))
                 {
                     axis->queuePendingEvent(event.caxis.value);
 
@@ -1172,7 +1347,9 @@ void InputDaemon::secondInputPass(QQueue<SDL_Event> *sdlEventQueue)
         case SDL_CONTROLLERSENSORUPDATE: {
             InputDevice *joy = trackcontrollers.value(event.csensor.which);
 
-            if (joy != nullptr && !joy->isControllerInputEnabled())
+            if (joy != nullptr && joy->isNativeGameInputSuspended())
+                break;
+            if (joy != nullptr && !joy->isEffectiveInputEnabled())
                 break;
 
             if (joy != nullptr)
@@ -1203,7 +1380,14 @@ void InputDaemon::secondInputPass(QQueue<SDL_Event> *sdlEventQueue)
         case SDL_CONTROLLERBUTTONUP: {
             InputDevice *joy = trackcontrollers.value(event.cbutton.which);
 
-            if (joy != nullptr && !joy->isControllerInputEnabled())
+            if (joy != nullptr && joy->isNativeGameInputSuspended())
+            {
+                GameController *gamepad = dynamic_cast<GameController *>(joy);
+                if (gamepad != nullptr)
+                    gamepad->rawButtonEvent(event.cbutton.button, event.type == SDL_CONTROLLERBUTTONDOWN);
+                break;
+            }
+            if (joy != nullptr && !joy->isEffectiveInputEnabled())
                 break;
 
             if (joy != nullptr)
@@ -1211,7 +1395,7 @@ void InputDaemon::secondInputPass(QQueue<SDL_Event> *sdlEventQueue)
                 SetJoystick *set = joy->getActiveSetJoystick();
                 JoyButton *button = set->getJoyButton(event.cbutton.button);
 
-                if (button != nullptr)
+                if (button != nullptr && joy->allowButtonEvent(event.cbutton.button, event.type == SDL_CONTROLLERBUTTONDOWN))
                 {
                     button->queuePendingEvent(event.type == SDL_CONTROLLERBUTTONDOWN ? true : false);
 
@@ -1260,7 +1444,7 @@ void InputDaemon::secondInputPass(QQueue<SDL_Event> *sdlEventQueue)
         while (activeDevIter.hasNext())
         {
             InputDevice *tempDevice = activeDevIter.next().value();
-            if (!tempDevice->isControllerInputEnabled())
+            if (!tempDevice->isEffectiveInputEnabled())
                 continue;
 
             tempDevice->activatePossibleControlStickEvents();
@@ -1334,13 +1518,93 @@ void InputDaemon::setControllerInputEnabled(InputDevice *device, bool enabled)
 
     device->setControllerInputEnabled(enabled);
 
-    if (!enabled)
+    if (!enabled && !device->isNativeGameInputSuspended())
     {
         SetJoystick *activeSet = device->getActiveSetJoystick();
         if (activeSet != nullptr)
             activeSet->release();
 
         JoyButton::resetActiveButtonMouseDistances(JoyButton::getMouseHelper());
+    }
+}
+
+void InputDaemon::setNativeGameInputSuspended(bool suspended)
+{
+    QMutexLocker locker(&PadderCommon::inputDaemonMutex);
+    if (m_nativeGameInputSuspended == suspended)
+        return;
+
+    m_nativeGameInputSuspended = suspended;
+
+    if (suspended)
+    {
+        m_resumeCutoffActive = false;
+        pollResetTimer.stop();
+        for (InputDevice *device : m_joysticks->values())
+        {
+            if (device == nullptr)
+                continue;
+
+            device->setNativeGameInputSuspended(true);
+            for (SetJoystick *set : device->getJoystick_sets())
+            {
+                if (set != nullptr)
+                    set->suspensionReset();
+            }
+            device->resetButtonDownCount();
+        }
+
+        JoyButton::clearSuspendedMouseState();
+        JoyButton::resetActiveButtonMouseDistances(JoyButton::getMouseHelper());
+        resetActiveMouseAcceleration();
+        clearBitArrayStatusInstances();
+        return;
+    }
+
+    // Events timestamped at or before this point belong to the suspended
+    // interval. The regular mapped path resumes only with newer input edges.
+    m_resumeTimestamp = SDL_GetTicks();
+    m_resumeCutoffActive = true;
+
+    for (InputDevice *device : m_joysticks->values())
+    {
+        if (device == nullptr)
+            continue;
+
+        QVector<bool> buttons;
+        QVector<int> hats;
+        QVector<int> axes;
+        SDL_Joystick *joystick = device->getJoyHandle();
+        GameController *controller = dynamic_cast<GameController *>(device);
+
+        buttons.reserve(device->getNumberButtons());
+        for (int i = 0; i < device->getNumberButtons(); ++i)
+        {
+            const bool pressed = (controller != nullptr && controller->getController() != nullptr)
+                                     ? SDL_GameControllerGetButton(controller->getController(),
+                                                                   static_cast<SDL_GameControllerButton>(i)) != 0
+                                     : (joystick != nullptr && SDL_JoystickGetButton(joystick, i) != 0);
+            buttons.append(pressed);
+        }
+
+        axes.reserve(device->getNumberAxes());
+        for (int i = 0; i < device->getNumberAxes(); ++i)
+        {
+            const int value = (controller != nullptr && controller->getController() != nullptr)
+                                  ? SDL_GameControllerGetAxis(controller->getController(), static_cast<SDL_GameControllerAxis>(i))
+                                  : (joystick != nullptr ? SDL_JoystickGetAxis(joystick, i) : 0);
+            axes.append(value);
+        }
+
+        hats.reserve(device->getNumberHats());
+        for (int i = 0; i < device->getNumberHats(); ++i)
+        {
+            const int value = (joystick != nullptr) ? SDL_JoystickGetHat(joystick, i) : 0;
+            hats.append(value);
+        }
+
+        device->initializeInputReleaseLatch(buttons, hats, axes);
+        device->setNativeGameInputSuspended(false);
     }
 }
 

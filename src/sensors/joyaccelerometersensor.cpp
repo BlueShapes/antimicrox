@@ -119,6 +119,13 @@ void JoyAccelerometerSensor::reset()
     m_shock_suppress_count = 0;
 }
 
+void JoyAccelerometerSensor::suspensionReset()
+{
+    JoySensor::suspensionReset();
+    m_shock_filter.reset();
+    m_shock_suppress_count = 0;
+}
+
 /**
  * @brief Initializes the JoySensorButton objects for this sensor.
  */

@@ -40,6 +40,7 @@ class JoyAccelerometerSensor : public JoySensor
 
   public slots:
     virtual void reset() override;
+    virtual void suspensionReset() override;
 
   protected:
     static const double SHOCK_DETECT_THRESHOLD;

@@ -325,6 +325,19 @@ first launches.</string>
           </widget>
          </item>
          <item>
+          <widget class="QCheckBox" name="controllableDeltaIntegrationCheckBox">
+           <property name="toolTip">
+            <string>When Controllable Delta is ready and Minecraft is the foreground window, suspend mapped output from all controllers until the game is released.</string>
+           </property>
+           <property name="text">
+            <string>Pause mapped output from all controllers while Controllable Delta controls Minecraft</string>
+           </property>
+           <property name="checked">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
           <widget class="QCheckBox" name="associateProfilesCheckBox">
            <property name="toolTip">
             <string>Associate .amgp files with AntiMicroX-Delta in Windows Explorer.</string>

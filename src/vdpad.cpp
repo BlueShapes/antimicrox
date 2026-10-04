@@ -291,3 +291,9 @@ JoyButton *VDPad::getLeftButton() const { return leftButton; }
 JoyButton *VDPad::getRightButton() const { return rightButton; }
 
 bool VDPad::getPendingVDPadEvent() const { return pendingVDPadEvent; }
+
+void VDPad::suspensionReset()
+{
+    pendingVDPadEvent = false;
+    JoyDPad::suspensionReset();
+}

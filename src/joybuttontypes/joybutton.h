@@ -240,6 +240,7 @@ class JoyButton : public QObject
                                     QTimer *staticMouseEventTimer);
     static void setSpringModeScreen(int screen, int &springModeScreen);
     static void resetActiveButtonMouseDistances(JoyButtonMouseHelper *mouseHelper);
+    static void clearSuspendedMouseState();
     static void setGamepadRefreshRate(int refresh, int &gamepadRefreshRate, JoyButtonMouseHelper *mouseHelper);
     static void restartLastMouseTime(QElapsedTimer *testOldMouseTime);
     static void setStaticMouseThread(QThread *thread, QTimer *staticMouseEventTimer, QElapsedTimer *testOldMouseTime,
@@ -376,6 +377,7 @@ class JoyButton : public QObject
     virtual void resetProperties();
     virtual void clearSlotsEventReset(bool clearSignalEmit = true); // JoyButtonEvents class
     virtual void eventReset();                                      // JoyButtonEvents class
+    void suspensionReset();
     virtual void mouseEvent();                                      // JoyButtonEvents class
 
     static void establishMouseTimerConnections();

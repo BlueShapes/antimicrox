@@ -38,6 +38,11 @@ Features:
   - macros consisting of elements mentioned above
 - Assigning multiple switchable sets of mappings to gamepad.
 - Auto profiles - assign profile to active application window (not in Wayland [note](https://github.com/AntiMicroX/antimicrox/issues/303)).
+- Windows integration with Controllable Delta: automatically pause mapped output
+  from all controllers while the mod can read a controller and its Minecraft
+  window is in the foreground. Enable or disable it in General settings.
+  Both applications need builds containing the bridge. See
+  [the integration protocol and verification notes](CONTROLLABLE_DELTA.md).
 
 This program is currently supported under various Linux
 distributions.

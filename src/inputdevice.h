@@ -20,6 +20,7 @@
 #define INPUTDEVICE_H
 
 #include "inputdevicecalibration.h"
+#include "inputreleaselatch.h"
 #include "joysensordirection.h"
 #include "joysensortype.h"
 #include "setjoystick.h"
@@ -73,6 +74,17 @@ class InputDevice : public QObject
     void removeControlStick(int index);
     bool isActive();
     bool isControllerInputEnabled() const;
+    bool isEffectiveInputEnabled() const;
+    bool isManuallyControllerInputEnabled() const;
+    bool isNativeGameInputSuspended() const;
+    void setNativeGameInputSuspended(bool suspended);
+    void initializeInputReleaseLatch(const QVector<bool> &buttons, const QVector<int> &hats, const QVector<int> &axes);
+    bool allowButtonEvent(int index, bool pressed);
+    bool allowHatEvent(int index, int direction);
+    bool allowAxisEvent(int index, int value);
+    bool isButtonAwaitingNeutral(int index) const;
+    bool isHatAwaitingNeutral(int index) const;
+    bool isAxisAwaitingNeutral(int index) const;
     int getButtonDownCount();
 
     virtual QString getXmlName() const = 0;
@@ -278,6 +290,7 @@ class InputDevice : public QObject
     void registerDBusObject();
     // Unregister the object in D-Bus builds
     void unregisterDBusObject();
+    bool isButtonSourceAwaitingNeutral(JoyButton *button) const;
 
     SDL_Joystick *m_joyhandle;
     QMap<int, SetJoystick *> joystick_sets;
@@ -289,6 +302,8 @@ class InputDevice : public QObject
     SDL_JoystickID joystickID;
     bool deviceEdited;
     std::atomic_bool controllerInputEnabled;
+    std::atomic_bool nativeGameInputSuspended;
+    InputReleaseLatch inputReleaseLatch;
 
     bool keyRepeatEnabled;
     int keyRepeatDelay;

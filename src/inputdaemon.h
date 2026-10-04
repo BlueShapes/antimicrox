@@ -54,6 +54,7 @@ class InputDaemon : public QObject
 
     void firstInputPass(QQueue<SDL_Event> *sdlEventQueue);
     void secondInputPass(QQueue<SDL_Event> *sdlEventQueue);
+    bool isPreResumeInputEvent(const SDL_Event &event) const;
     void modifyUnplugEvents(QQueue<SDL_Event> *sdlEventQueue);
     QBitArray createUnplugEventBitArray(InputDevice *device);
     Joystick *openJoystickDevice(int index);
@@ -83,6 +84,7 @@ class InputDaemon : public QObject
     void addInputDevice(int index, QMap<QString, int> &uniques, int &counterUniques, bool &duplicatedGamepad);
     void refreshIndexes();
     void setControllerInputEnabled(InputDevice *device, bool enabled);
+    void setNativeGameInputSuspended(bool suspended);
     void resetActiveMouseAcceleration();
 
   private slots:
@@ -101,8 +103,11 @@ class InputDaemon : public QObject
 
     QHash<InputDevice *, InputDeviceBitArrayStatus *> releaseEventsGenerated;
     QHash<InputDevice *, InputDeviceBitArrayStatus *> pendingEventValues;
+    Uint32 m_resumeTimestamp;
+    bool m_resumeCutoffActive;
 
     bool stopped;
+    bool m_nativeGameInputSuspended;
     bool m_graphical;
 
     SDLEventReader *eventWorker;

@@ -1846,6 +1846,29 @@ void JoyControlStick::setJoyMode(JoyMode mode)
 
 JoyControlStick::JoyMode JoyControlStick::getJoyMode() { return currentMode; }
 
+void JoyControlStick::suspensionReset()
+{
+    if (directionDelayTimer.isActive())
+        directionDelayTimer.stop();
+
+    pendingStickEvent = false;
+    isActive = false;
+    safezone = false;
+    currentDirection = StickCentered;
+    activeButton1 = nullptr;
+    activeButton2 = nullptr;
+    activeButton3 = nullptr;
+
+    for (JoyControlStickButton *button : buttons)
+    {
+        if (button != nullptr)
+            button->suspensionReset();
+    }
+
+    if (modifierButton != nullptr)
+        modifierButton->suspensionReset();
+}
+
 void JoyControlStick::releaseButtonEvents()
 {
     QHashIterator<JoyStickDirections, JoyControlStickButton *> iter(buttons);
