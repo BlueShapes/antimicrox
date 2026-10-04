@@ -13,8 +13,7 @@
 class QFile;
 class QXmlStreamReader;
 
-namespace ProfileXmlSafety
-{
+namespace ProfileXmlSafety {
 /**
  * Validate and read a bounded snapshot of a regular profile file, leaving the
  * reader positioned on its root start element. Profile DTDs are intentionally

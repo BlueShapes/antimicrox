@@ -1,5 +1,32 @@
 # Changelog
 
+## [1.1.0](https://github.com/BlueShapes/antimicrox/tree/v1.1.0) (2026-10-05)
+
+**Controllable Delta integration (Windows):**
+
+- Automatically pause mapped output from all controllers while the foreground Minecraft window reports usable controller input through the Controllable Delta bridge.
+- Release generated keys and mouse buttons, stop mapping timers and pending macros, and preserve profiles and manual controller enable settings while paused.
+- Resume after switching away from Minecraft, disconnecting, disabling integration, or losing fresh state notifications. Held buttons, hats, and axes must be released or centered before generating output again.
+- Add a default-enabled integration setting and pause status in the window and tray, with Japanese translations.
+- Validate the named-pipe peer, process and window ownership, message schema, sequence, freshness, and connection limits.
+
+Requires a Controllable Delta build containing the protocol v1 bridge. This
+initial integration is Windows-only and uses asynchronous notifications; a short
+delay when changing input ownership is possible. See
+[the integration guide](CONTROLLABLE_DELTA.md) for the protocol and settings.
+
+**Controller UI fixes:**
+
+- Prevent stale control callbacks after controller widgets are replaced.
+- Synchronize stick-name changes with input processing and refresh name previews reliably.
+
+**Verification and maintenance:**
+
+- Add focused protocol, named-pipe, held-input, and virtual-controller pipeline tests.
+- Run input bridge checks in the CI build and release gates, and fix generated-source scoping in Windows test builds.
+- Fix update-check initialization for Clang builds and apply the repository's C++ formatting rules.
+- Mark the repository as AI-driven and permit autonomous verified local commits.
+
 ## [1.0.0](https://github.com/BlueShapes/antimicrox/tree/v1.0.0) (2026-09-09)
 
 First independently versioned AntiMicroX-Delta release. The application remains

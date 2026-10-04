@@ -26,8 +26,7 @@
     #include <windows.h>
 #endif
 
-namespace
-{
+namespace {
 bool openRegularProfile(QFile &file)
 {
 #ifdef Q_OS_UNIX
@@ -62,10 +61,10 @@ bool openRegularProfile(QFile &file)
         // Do not follow a final reparse point. A competing replacement with a
         // symlink to a pipe/device is opened as the reparse point itself and
         // rejected by the same-handle attribute check below.
-        HANDLE handle = CreateFileW(reinterpret_cast<LPCWSTR>(file.fileName().utf16()), GENERIC_READ,
-                                    FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING,
-                                    FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_SEQUENTIAL_SCAN,
-                                    nullptr);
+        HANDLE handle =
+            CreateFileW(reinterpret_cast<LPCWSTR>(file.fileName().utf16()), GENERIC_READ,
+                        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING,
+                        FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_SEQUENTIAL_SCAN, nullptr);
         if (handle == INVALID_HANDLE_VALUE)
             return false;
 
@@ -88,8 +87,8 @@ bool openRegularProfile(QFile &file)
     const bool isRegularDiskFile =
         nativeHandle != -1 && GetFileType(reinterpret_cast<HANDLE>(nativeHandle)) == FILE_TYPE_DISK &&
         GetFileInformationByHandle(reinterpret_cast<HANDLE>(nativeHandle), &information) != FALSE &&
-        (information.dwFileAttributes & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_DEVICE |
-                                         FILE_ATTRIBUTE_REPARSE_POINT)) == 0;
+        (information.dwFileAttributes & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_DEVICE | FILE_ATTRIBUTE_REPARSE_POINT)) ==
+            0;
     if (!isRegularDiskFile)
     {
         file.close();

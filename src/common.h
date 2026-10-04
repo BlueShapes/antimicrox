@@ -156,7 +156,7 @@ const QString ANTIMICROX_PRERELEASE_VERSION = QStringLiteral(PROJECT_PRERELEASE_
 
 const QString programVersion = ProductIdentity::version
 #ifdef QT_DEBUG
-    + "-d"
+                               + "-d"
 #endif
     ;
 const QString sdlVersionUsed = ([] {

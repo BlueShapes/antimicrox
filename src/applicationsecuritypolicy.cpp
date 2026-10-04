@@ -25,8 +25,7 @@ const ApplicationSecurityPolicy &ApplicationSecurityPolicy::current() noexcept
         return ElevationState::Unknown;
     }();
 #elif defined(Q_OS_UNIX)
-    static const ElevationState elevationState =
-        geteuid() == 0 ? ElevationState::Elevated : ElevationState::NotElevated;
+    static const ElevationState elevationState = geteuid() == 0 ? ElevationState::Elevated : ElevationState::NotElevated;
 #else
     constexpr ElevationState elevationState = ElevationState::NotElevated;
 #endif

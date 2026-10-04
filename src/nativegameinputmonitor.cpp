@@ -7,6 +7,7 @@
         #define NOMINMAX
     #endif
     #include <windows.h>
+
     #include <sddl.h>
 
 namespace {
@@ -32,14 +33,12 @@ QString processSid(HANDLE process)
     return result;
 }
 
-bool alive(HANDLE process)
-{
-    return process && WaitForSingleObject(process, 0) == WAIT_TIMEOUT;
-}
-}
+bool alive(HANDLE process) { return process && WaitForSingleObject(process, 0) == WAIT_TIMEOUT; }
+} // namespace
 #endif
 
-NativeGameInputMonitor::NativeGameInputMonitor(QObject *parent) : QObject(parent)
+NativeGameInputMonitor::NativeGameInputMonitor(QObject *parent)
+    : QObject(parent)
 {
     server.setSocketOptions(QLocalServer::UserAccessOption);
     server.setMaxPendingConnections(8);
@@ -110,10 +109,10 @@ void NativeGameInputMonitor::acceptConnections()
         HANDLE process = nullptr;
         const QString ourSid = processSid(GetCurrentProcess());
         const bool peerValid = connections.size() < 8 && GetNamedPipeClientProcessId(pipe, &pid) && pid &&
-            ProcessIdToSessionId(pid, &peerSession) && ProcessIdToSessionId(GetCurrentProcessId(), &ourSession) &&
-            peerSession == ourSession &&
-            (process = OpenProcess(SYNCHRONIZE | PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid)) &&
-            alive(process) && !ourSid.isEmpty() && processSid(process) == ourSid;
+                               ProcessIdToSessionId(pid, &peerSession) &&
+                               ProcessIdToSessionId(GetCurrentProcessId(), &ourSession) && peerSession == ourSession &&
+                               (process = OpenProcess(SYNCHRONIZE | PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid)) &&
+                               alive(process) && !ourSid.isEmpty() && processSid(process) == ourSid;
         if (peerValid)
         {
             socket->setReadBufferSize(8192);

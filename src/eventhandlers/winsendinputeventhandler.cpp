@@ -25,8 +25,7 @@
 #include <antkeymapper.h>
 #include <winextras.h>
 
-namespace
-{
+namespace {
 void sendInputWithDiagnostics(UINT inputCount, INPUT *inputs)
 {
     static std::atomic_flag failureLogged = ATOMIC_FLAG_INIT;

@@ -227,8 +227,9 @@ int main(int argc, char *argv[])
     if (ApplicationSecurityPolicy::current().mustRefuseStartup())
     {
 #ifdef Q_OS_WIN
-        MessageBoxW(nullptr, L"AntiMicroX-Delta cannot run with Administrator privileges. Restart it as a standard user. "
-                             L"If elevation status cannot be verified, it is refused for your safety.",
+        MessageBoxW(nullptr,
+                    L"AntiMicroX-Delta cannot run with Administrator privileges. Restart it as a standard user. "
+                    L"If elevation status cannot be verified, it is refused for your safety.",
                     L"Elevated execution is not supported", MB_OK | MB_ICONERROR);
 #else
         std::cerr << "AntiMicroX-Delta cannot run with root privileges. Restart it as a standard user.\n";
@@ -619,7 +620,8 @@ int main(int argc, char *argv[])
     bool controllableDeltaIntegrationEnabled = true;
     {
         QMutexLocker locker(settings.getLock());
-        controllableDeltaIntegrationEnabled = settings.value(QStringLiteral("NativeGameInput/ControllableDeltaEnabled"), true).toBool();
+        controllableDeltaIntegrationEnabled =
+            settings.value(QStringLiteral("NativeGameInput/ControllableDeltaEnabled"), true).toBool();
     }
     QObject::connect(&nativeGameInputMonitor, &NativeGameInputMonitor::suspensionChanged, joypad_worker.data(),
                      &InputDaemon::setNativeGameInputSuspended, Qt::QueuedConnection);
@@ -630,8 +632,8 @@ int main(int argc, char *argv[])
 
     // Stop monitoring before tearing down tabs and the input worker. The monitor
     // remains in the GUI thread for its full lifetime.
-    QObject::connect(&antimicrox, &QApplication::aboutToQuit, &nativeGameInputMonitor,
-                     &NativeGameInputMonitor::close, Qt::DirectConnection);
+    QObject::connect(&antimicrox, &QApplication::aboutToQuit, &nativeGameInputMonitor, &NativeGameInputMonitor::close,
+                     Qt::DirectConnection);
     QObject::connect(&antimicrox, &QApplication::aboutToQuit, localServer, &LocalAntiMicroServer::close);
     QObject::connect(&antimicrox, &QApplication::aboutToQuit, mainWindow, &MainWindow::saveAppConfig);
     QObject::connect(&antimicrox, &QApplication::aboutToQuit, mainWindow, &MainWindow::removeJoyTabs);

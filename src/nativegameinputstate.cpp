@@ -18,11 +18,11 @@ bool integer(const QJsonValue &value, quint64 &result)
     result = static_cast<quint64>(number);
     return true;
 }
-}
+} // namespace
 
-NativeGameInputState::Result NativeGameInputState::accept(
-    const QByteArray &frame, quint64 connection, quint32 peerPid, quint64 now,
-    const std::function<bool(quintptr, quint32)> &windowOwner)
+NativeGameInputState::Result NativeGameInputState::accept(const QByteArray &frame, quint64 connection, quint32 peerPid,
+                                                          quint64 now,
+                                                          const std::function<bool(quintptr, quint32)> &windowOwner)
 {
     if (frame.isEmpty() || frame.size() >= MaxFrameBytes || connection == 0 || peerPid == 0)
         return Result::Invalid;
@@ -34,16 +34,14 @@ NativeGameInputState::Result NativeGameInputState::accept(
     quint64 protocol = 0, pid = 0, seq = 0, observed = 0;
     if (!integer(object.value("protocol"), protocol) || protocol != 1 ||
         object.value("product") != QJsonValue(QStringLiteral("controllable-delta")) ||
-        object.value("type") != QJsonValue(QStringLiteral("state")) ||
-        !integer(object.value("pid"), pid) || pid != peerPid ||
-        !integer(object.value("seq"), seq) ||
-        !integer(object.value("observed_uptime_ms"), observed) ||
+        object.value("type") != QJsonValue(QStringLiteral("state")) || !integer(object.value("pid"), pid) ||
+        pid != peerPid || !integer(object.value("seq"), seq) || !integer(object.value("observed_uptime_ms"), observed) ||
         !object.value("controller_ready").isBool() || !object.value("session").isString() ||
         !object.value("hwnd").isString())
         return Result::Invalid;
 
-    static const QRegularExpression uuid(QStringLiteral(
-        "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"));
+    static const QRegularExpression uuid(
+        QStringLiteral("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"));
     static const QRegularExpression handle(QStringLiteral("^0x[0-9a-fA-F]{1,16}$"));
     const QString session = object.value("session").toString().toLower();
     const QString hwndString = object.value("hwnd").toString();
@@ -61,8 +59,7 @@ NativeGameInputState::Result NativeGameInputState::accept(
     if (previous != sessions.cend() && previous->pid != peerPid)
         return Result::Invalid;
     // A duplicate/replayed update never renews a lease, including after reconnect.
-    if (observed > now || now - observed > MaxSnapshotAgeMs ||
-        (previous != sessions.cend() && seq <= previous->seq))
+    if (observed > now || now - observed > MaxSnapshotAgeMs || (previous != sessions.cend() && seq <= previous->seq))
         return Result::Ignored;
     if (previous == sessions.cend() && sessions.size() >= MaxSessions)
         return Result::Invalid;
@@ -105,8 +102,8 @@ void NativeGameInputState::prune(const std::function<bool(quint32)> &processAliv
     }
 }
 
-bool NativeGameInputState::suspended(
-    quint64 now, quintptr foreground, const std::function<bool(quintptr, quint32)> &windowOwner) const
+bool NativeGameInputState::suspended(quint64 now, quintptr foreground,
+                                     const std::function<bool(quintptr, quint32)> &windowOwner) const
 {
     if (foreground == 0)
         return false;

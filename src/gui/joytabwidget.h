@@ -87,7 +87,7 @@ class JoyTabWidget : public QWidget
     void reconnectMainComboBoxEvents();
     void disconnectCheckUnsavedEvent();
     void reconnectCheckUnsavedEvent();
-    void fillSetButtons(SetJoystick *set);   // JoyTabWidgetSets class
+    void fillSetButtons(SetJoystick *set);                                   // JoyTabWidgetSets class
     void removeSetButtons(SetJoystick *set, bool deleteImmediately = false); // JoyTabWidgetSets class
     bool isKeypadUnlocked();
 

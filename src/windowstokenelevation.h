@@ -8,8 +8,7 @@
     #endif
     #include <windows.h>
 
-namespace WindowsTokenElevation
-{
+namespace WindowsTokenElevation {
 enum class State
 {
     NotElevated,

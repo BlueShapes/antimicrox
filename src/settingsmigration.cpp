@@ -20,8 +20,7 @@
     #include <unistd.h>
 #endif
 
-namespace
-{
+namespace {
 bool durableFlush(QTemporaryFile &file)
 {
     if (!file.flush())
@@ -36,8 +35,7 @@ bool durableFlush(QTemporaryFile &file)
 }
 } // namespace
 
-namespace SettingsMigration
-{
+namespace SettingsMigration {
 Outcome copyFirstAvailable(const QStringList &sourcePaths, const QString &destinationPath)
 {
     if (QFileInfo::exists(destinationPath))

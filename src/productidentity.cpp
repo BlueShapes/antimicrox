@@ -11,8 +11,7 @@
 
 #include <QRegularExpression>
 
-namespace
-{
+namespace {
 struct ParsedRelease
 {
     QVersionNumber number;
@@ -31,23 +30,16 @@ ParsedRelease parseRelease(const QString &text)
 }
 } // namespace
 
-namespace ProductIdentity
-{
+namespace ProductIdentity {
 const QString version =
-    QStringLiteral("%1.%2.%3").arg(PROJECT_MAJOR_VERSION).arg(PROJECT_MINOR_VERSION).arg(PROJECT_PATCH_VERSION)
-    + (QStringLiteral(PROJECT_PRERELEASE_VERSION).isEmpty()
-           ? QString()
-           : QStringLiteral("-") + QStringLiteral(PROJECT_PRERELEASE_VERSION));
+    QStringLiteral("%1.%2.%3").arg(PROJECT_MAJOR_VERSION).arg(PROJECT_MINOR_VERSION).arg(PROJECT_PATCH_VERSION) +
+    (QStringLiteral(PROJECT_PRERELEASE_VERSION).isEmpty()
+         ? QString()
+         : QStringLiteral("-") + QStringLiteral(PROJECT_PRERELEASE_VERSION));
 
-QVersionNumber normalizedReleaseVersion(const QString &tag)
-{
-    return parseRelease(tag).number;
-}
+QVersionNumber normalizedReleaseVersion(const QString &tag) { return parseRelease(tag).number; }
 
-bool isNewerRelease(const QString &tag)
-{
-    return isNewerRelease(tag, version);
-}
+bool isNewerRelease(const QString &tag) { return isNewerRelease(tag, version); }
 
 bool isNewerRelease(const QString &tag, const QString &installedVersion)
 {

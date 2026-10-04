@@ -192,7 +192,7 @@ MainWindow::MainWindow(QMap<SDL_JoystickID, InputDevice *> *joysticks, CommandLi
     ui->updateButton->setVisible(false);
 #ifdef CHECK_FOR_UPDATES
     connect(&m_network_manager, &QNetworkAccessManager::finished, this, &MainWindow::networkManagerFinished);
-    QNetworkRequest request(QUrl(ProductIdentity::releaseApiUrl));
+    QNetworkRequest request{QUrl{ProductIdentity::releaseApiUrl}};
     m_network_manager.get(request);
 #endif
 
@@ -636,8 +636,7 @@ void MainWindow::populateTrayIcon()
     trayIconMenu->addAction(updateJoy);
     trayIconMenu->addAction(closeAction);
 
-    QIcon icon = PadderCommon::loadIcon(ProductIdentity::desktopId + QStringLiteral(".trayicon"),
-                                       ":/images/antimicrox.png");
+    QIcon icon = PadderCommon::loadIcon(ProductIdentity::desktopId + QStringLiteral(".trayicon"), ":/images/antimicrox.png");
     trayIcon->setIcon(icon);
     trayIcon->setContextMenu(trayIconMenu);
     updateNativeGameInputStatus();
@@ -708,8 +707,8 @@ void MainWindow::refreshControllerMenu()
     {
         QAction *pausedAction = ui->menuController->addAction(tr("Mapped output from all controllers is paused"));
         pausedAction->setEnabled(false);
-        pausedAction->setStatusTip(
-            tr("Controllable Delta is controlling Minecraft. All mapped controller output will resume when it releases the game."));
+        pausedAction->setStatusTip(tr("Controllable Delta is controlling Minecraft. All mapped controller output will "
+                                      "resume when it releases the game."));
     }
 
     QMap<int, InputDevice *> orderedDevices;
@@ -728,8 +727,7 @@ void MainWindow::refreshControllerMenu()
 
     for (InputDevice *device : orderedDevices)
     {
-        const QString actionText =
-            QStringLiteral("%1 %2").arg(device->getSDLName(), tr("(%1)").arg(device->getName()));
+        const QString actionText = QStringLiteral("%1 %2").arg(device->getSDLName(), tr("(%1)").arg(device->getName()));
         QAction *controllerAction = ui->menuController->addAction(actionText);
         controllerAction->setCheckable(true);
         controllerAction->setChecked(device->isControllerInputEnabled());
@@ -784,15 +782,15 @@ void MainWindow::setNativeGameInputSuspended(bool suspended)
 
 void MainWindow::updateNativeGameInputStatus()
 {
-    setWindowTitle(nativeGameInputSuspended
-                       ? tr("%1 — paused by Controllable Delta").arg(ProductIdentity::displayName)
-                       : ProductIdentity::displayName);
+    setWindowTitle(nativeGameInputSuspended ? tr("%1 — paused by Controllable Delta").arg(ProductIdentity::displayName)
+                                            : ProductIdentity::displayName);
 
     if (trayIcon != nullptr)
     {
-        trayIcon->setToolTip(nativeGameInputSuspended
-                                 ? tr("Mapped output from all controllers is paused while Controllable Delta controls Minecraft")
-                                 : ProductIdentity::displayName);
+        trayIcon->setToolTip(
+            nativeGameInputSuspended
+                ? tr("Mapped output from all controllers is paused while Controllable Delta controls Minecraft")
+                : ProductIdentity::displayName);
     }
 }
 

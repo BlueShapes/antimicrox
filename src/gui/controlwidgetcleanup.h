@@ -7,8 +7,7 @@
 #include <QPointer>
 #include <QWidget>
 
-namespace ControlWidgetCleanup
-{
+namespace ControlWidgetCleanup {
 enum class Mode
 {
     Deferred,

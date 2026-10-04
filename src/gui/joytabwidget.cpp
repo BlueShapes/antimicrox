@@ -159,9 +159,8 @@ JoyTabWidget::JoyTabWidget(InputDevice *joystick, AntiMicroSettings *settings, Q
     QFont lockFont = autoProfileLockButton->font();
     lockFont.setPointSize(lockFont.pointSize() + 12);
     autoProfileLockButton->setFont(lockFont);
-    connect(autoProfileLockButton, &QPushButton::toggled, this, [this](bool paused) {
-        emit autoProfilePauseStateRequested(paused);
-    });
+    connect(autoProfileLockButton, &QPushButton::toggled, this,
+            [this](bool paused) { emit autoProfilePauseStateRequested(paused); });
     autoProfileLockLayout->addWidget(autoProfileLockButton);
 
     autoProfileLockText = new QLabel(autoProfileLockBanner);
@@ -589,8 +588,7 @@ void JoyTabWidget::setAutoProfileState(bool active, bool paused)
         action = tr("Automatic profile switching is off. Enable it in Settings.");
     } else if (autoProfilePaused)
     {
-        message =
-            tr("Automatic profile switching is temporarily paused.");
+        message = tr("Automatic profile switching is temporarily paused.");
         action = tr("Resume automatic profile switching");
     } else
     {
@@ -1439,9 +1437,8 @@ void JoyTabWidget::loadConfigFile(QString fileLocation)
 {
     const QFileInfo requestedProfile(fileLocation);
     const QFileInfo currentProfile(configBox->currentData().toString());
-    const QString requestedPath = requestedProfile.canonicalFilePath().isEmpty()
-                                      ? requestedProfile.absoluteFilePath()
-                                      : requestedProfile.canonicalFilePath();
+    const QString requestedPath = requestedProfile.canonicalFilePath().isEmpty() ? requestedProfile.absoluteFilePath()
+                                                                                 : requestedProfile.canonicalFilePath();
     const QString currentPath = currentProfile.canonicalFilePath().isEmpty() ? currentProfile.absoluteFilePath()
                                                                              : currentProfile.canonicalFilePath();
 #ifdef Q_OS_WIN
@@ -2466,7 +2463,7 @@ void JoyTabWidget::removeSetButtons(SetJoystick *set, bool deleteImmediately)
 
     // Profile resets require destruction now; display-only rebuilds may run inside a group signal.
     controlWidgetCleanup.clearLayout(current_layout, deleteImmediately ? ControlWidgetCleanup::Mode::Immediate
-                                                                      : ControlWidgetCleanup::Mode::Deferred);
+                                                                       : ControlWidgetCleanup::Mode::Deferred);
 
     for (int j = 0; j < m_joystick->getNumberSticks(); j++)
     {

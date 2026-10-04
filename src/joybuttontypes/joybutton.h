@@ -378,7 +378,7 @@ class JoyButton : public QObject
     virtual void clearSlotsEventReset(bool clearSignalEmit = true); // JoyButtonEvents class
     virtual void eventReset();                                      // JoyButtonEvents class
     void suspensionReset();
-    virtual void mouseEvent();                                      // JoyButtonEvents class
+    virtual void mouseEvent(); // JoyButtonEvents class
 
     static void establishMouseTimerConnections();
 

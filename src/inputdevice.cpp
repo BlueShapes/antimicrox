@@ -19,7 +19,6 @@
 #include "inputdevice.h"
 
 #include "antimicrosettings.h"
-#include "joycontrolstick.h"
 #include "common.h"
 #include "globalvariables.h"
 #include "joybuttontypes/joyaxisbutton.h"
@@ -226,13 +225,12 @@ void InputDevice::setActiveSetNumber(int index)
             // Last distances for elements are taken from associated axes.
             // Copying is not required here.
             JoyControlStick *stick = current_set->getJoyStick(i);
-            const bool stickLatched = isAxisAwaitingNeutral(stick->getAxisX()->getIndex()) ||
-                                      isAxisAwaitingNeutral(stick->getAxisY()->getIndex());
+            const bool stickLatched =
+                isAxisAwaitingNeutral(stick->getAxisX()->getIndex()) || isAxisAwaitingNeutral(stick->getAxisY()->getIndex());
             stickstates.append(stickLatched ? JoyControlStick::StickCentered : stick->getCurrentDirection());
             // Treat held directions as newly activated in the destination set so
             // time-based mouse acceleration cannot carry across set changes.
-            const auto destinationButtons =
-                tempSet->getJoyStick(i)->getButtonsForDirection(stick->getCurrentDirection());
+            const auto destinationButtons = tempSet->getJoyStick(i)->getButtonsForDirection(stick->getCurrentDirection());
             for (JoyControlStickButton *button : destinationButtons)
             {
                 if (button != nullptr)
@@ -243,9 +241,10 @@ void InputDevice::setActiveSetNumber(int index)
         for (int i = 0; i < current_set->getNumberVDPads(); i++)
         {
             VDPad *dpad = current_set->getVDPad(i);
-            const bool dpadLatched =
-                isButtonSourceAwaitingNeutral(dpad->getUpButton()) || isButtonSourceAwaitingNeutral(dpad->getDownButton()) ||
-                isButtonSourceAwaitingNeutral(dpad->getLeftButton()) || isButtonSourceAwaitingNeutral(dpad->getRightButton());
+            const bool dpadLatched = isButtonSourceAwaitingNeutral(dpad->getUpButton()) ||
+                                     isButtonSourceAwaitingNeutral(dpad->getDownButton()) ||
+                                     isButtonSourceAwaitingNeutral(dpad->getLeftButton()) ||
+                                     isButtonSourceAwaitingNeutral(dpad->getRightButton());
             vdpadstates.append(dpadLatched ? 0 : dpad->getCurrentDirection());
             JoyDPadButton::JoyDPadDirections tempDir =
                 static_cast<JoyDPadButton::JoyDPadDirections>(dpad->getCurrentDirection());
@@ -752,12 +751,12 @@ void InputDevice::removeControlStick(int index)
 
 bool InputDevice::isActive() { return buttonDownCount > 0; }
 
-bool InputDevice::isControllerInputEnabled() const
-{
-    return controllerInputEnabled.load();
-}
+bool InputDevice::isControllerInputEnabled() const { return controllerInputEnabled.load(); }
 
-bool InputDevice::isEffectiveInputEnabled() const { return controllerInputEnabled.load() && !nativeGameInputSuspended.load(); }
+bool InputDevice::isEffectiveInputEnabled() const
+{
+    return controllerInputEnabled.load() && !nativeGameInputSuspended.load();
+}
 
 bool InputDevice::isManuallyControllerInputEnabled() const { return controllerInputEnabled.load(); }
 
@@ -766,7 +765,7 @@ bool InputDevice::isNativeGameInputSuspended() const { return nativeGameInputSus
 void InputDevice::setNativeGameInputSuspended(bool suspended) { nativeGameInputSuspended.store(suspended); }
 
 void InputDevice::initializeInputReleaseLatch(const QVector<bool> &buttons, const QVector<int> &hats,
-                                             const QVector<int> &axes)
+                                              const QVector<int> &axes)
 {
     QVector<bool> axesInDeadZone;
     QVector<int> calibratedAxes;
@@ -1645,11 +1644,10 @@ void InputDevice::activatePossibleVDPadEvents()
 
         if ((tempVDPad != nullptr) && tempVDPad->hasPendingEvent())
         {
-            const bool sourceLatched =
-                isButtonSourceAwaitingNeutral(tempVDPad->getUpButton()) ||
-                isButtonSourceAwaitingNeutral(tempVDPad->getDownButton()) ||
-                isButtonSourceAwaitingNeutral(tempVDPad->getLeftButton()) ||
-                isButtonSourceAwaitingNeutral(tempVDPad->getRightButton());
+            const bool sourceLatched = isButtonSourceAwaitingNeutral(tempVDPad->getUpButton()) ||
+                                       isButtonSourceAwaitingNeutral(tempVDPad->getDownButton()) ||
+                                       isButtonSourceAwaitingNeutral(tempVDPad->getLeftButton()) ||
+                                       isButtonSourceAwaitingNeutral(tempVDPad->getRightButton());
             if (!isEffectiveInputEnabled() || sourceLatched)
                 tempVDPad->clearPendingEvent();
             else

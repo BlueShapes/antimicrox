@@ -151,12 +151,11 @@ AddEditAutoProfileDialog::AddEditAutoProfileDialog(AutoProfileInfo *info, AntiMi
     ui->asDefaultCheckBox->setEnabled(info->isCurrentDefault());
 
     connect(ui->profileBrowsePushButton, &QPushButton::clicked, this, &AddEditAutoProfileDialog::openProfileBrowseDialog);
-    connect(ui->profileComboBox, static_cast<void (QComboBox::*)(int)>(&QComboBox::activated), this,
-            [this](int index) {
-                const QString profilePath = ui->profileComboBox->itemData(index).toString();
-                if (!profilePath.isEmpty())
-                    ui->profileLineEdit->setText(profilePath);
-            });
+    connect(ui->profileComboBox, static_cast<void (QComboBox::*)(int)>(&QComboBox::activated), this, [this](int index) {
+        const QString profilePath = ui->profileComboBox->itemData(index).toString();
+        if (!profilePath.isEmpty())
+            ui->profileLineEdit->setText(profilePath);
+    });
     connect(ui->applicationPushButton, &QPushButton::clicked, this, &AddEditAutoProfileDialog::openApplicationBrowseDialog);
     connect(ui->devicesComboBox, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this,
             &AddEditAutoProfileDialog::checkForReservedUniques);

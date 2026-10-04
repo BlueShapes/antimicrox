@@ -20,8 +20,8 @@
 
 #include "antimicrosettings.h"
 #include "common.h"
-#include "globalvariables.h"
 #include "gamecontroller/gamecontroller.h"
+#include "globalvariables.h"
 #include "inputdevicebitarraystatus.h"
 #include "joycontrolstick.h"
 #include "joydpad.h"
@@ -1580,19 +1580,20 @@ void InputDaemon::setNativeGameInputSuspended(bool suspended)
         buttons.reserve(device->getNumberButtons());
         for (int i = 0; i < device->getNumberButtons(); ++i)
         {
-            const bool pressed = (controller != nullptr && controller->getController() != nullptr)
-                                     ? SDL_GameControllerGetButton(controller->getController(),
-                                                                   static_cast<SDL_GameControllerButton>(i)) != 0
-                                     : (joystick != nullptr && SDL_JoystickGetButton(joystick, i) != 0);
+            const bool pressed =
+                (controller != nullptr && controller->getController() != nullptr)
+                    ? SDL_GameControllerGetButton(controller->getController(), static_cast<SDL_GameControllerButton>(i)) != 0
+                    : (joystick != nullptr && SDL_JoystickGetButton(joystick, i) != 0);
             buttons.append(pressed);
         }
 
         axes.reserve(device->getNumberAxes());
         for (int i = 0; i < device->getNumberAxes(); ++i)
         {
-            const int value = (controller != nullptr && controller->getController() != nullptr)
-                                  ? SDL_GameControllerGetAxis(controller->getController(), static_cast<SDL_GameControllerAxis>(i))
-                                  : (joystick != nullptr ? SDL_JoystickGetAxis(joystick, i) : 0);
+            const int value =
+                (controller != nullptr && controller->getController() != nullptr)
+                    ? SDL_GameControllerGetAxis(controller->getController(), static_cast<SDL_GameControllerAxis>(i))
+                    : (joystick != nullptr ? SDL_JoystickGetAxis(joystick, i) : 0);
             axes.append(value);
         }
 

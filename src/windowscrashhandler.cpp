@@ -10,14 +10,14 @@
 #include "windowscrashhandler.h"
 
 #include <windows.h>
+
 #include <dbghelp.h>
 #include <strsafe.h>
 
 #include <cwchar>
 #include <exception>
 
-namespace
-{
+namespace {
 constexpr size_t pathCapacity = 32768;
 constexpr size_t reservedFilenameCharacters = 96;
 constexpr unsigned maximumRetainedDumpsBeforeCrash = 4;
@@ -54,8 +54,7 @@ bool createDirectoryTree(const wchar_t *path) noexcept
     if (partial[0] != L'\0' && partial[1] == L':')
     {
         start = 3;
-    }
-    else if (partial[0] == L'\\' && partial[1] == L'\\')
+    } else if (partial[0] == L'\\' && partial[1] == L'\\')
     {
         wchar_t *serverEnd = std::wcschr(partial + 2, L'\\');
         wchar_t *shareEnd = serverEnd == nullptr ? nullptr : std::wcschr(serverEnd + 1, L'\\');
@@ -133,9 +132,8 @@ bool pruneOldCrashDumps(const wchar_t *directory) noexcept
             return true;
 
         wchar_t oldestPath[pathCapacity] = {};
-        if (!haveOldest
-            || FAILED(StringCchPrintfW(oldestPath, pathCapacity, L"%s\\%s", directory, oldestName))
-            || DeleteFileW(oldestPath) == FALSE)
+        if (!haveOldest || FAILED(StringCchPrintfW(oldestPath, pathCapacity, L"%s\\%s", directory, oldestName)) ||
+            DeleteFileW(oldestPath) == FALSE)
         {
             return false;
         }
@@ -156,8 +154,8 @@ bool selectDefaultDirectory(wchar_t (&directory)[pathCapacity]) noexcept
     return appendPathComponent(directory, L"crashes");
 #else
     DWORD length = GetEnvironmentVariableW(L"LOCALAPPDATA", directory, static_cast<DWORD>(pathCapacity));
-    if (length > 0 && length < pathCapacity - reservedFilenameCharacters
-        && appendPathComponent(directory, L"antimicrox-delta") && appendPathComponent(directory, L"crashes"))
+    if (length > 0 && length < pathCapacity - reservedFilenameCharacters &&
+        appendPathComponent(directory, L"antimicrox-delta") && appendPathComponent(directory, L"crashes"))
     {
         return true;
     }
@@ -198,8 +196,8 @@ bool writeMiniDump(EXCEPTION_POINTERS *exceptionPointers) noexcept
             MINIDUMP_EXCEPTION_INFORMATION *exceptionInformationPointer =
                 exceptionPointers == nullptr ? nullptr : &exceptionInformation;
 
-            const MINIDUMP_TYPE detailedType = static_cast<MINIDUMP_TYPE>(
-                MiniDumpNormal | MiniDumpWithThreadInfo | MiniDumpWithUnloadedModules);
+            const MINIDUMP_TYPE detailedType =
+                static_cast<MINIDUMP_TYPE>(MiniDumpNormal | MiniDumpWithThreadInfo | MiniDumpWithUnloadedModules);
             BOOL written = MiniDumpWriteDump(GetCurrentProcess(), processId, dumpFile, detailedType,
                                              exceptionInformationPointer, nullptr, nullptr);
             if (written == FALSE)
@@ -241,7 +239,7 @@ bool WindowsCrashHandler::install(const wchar_t *directoryOverride) noexcept
 {
     wchar_t selectedDirectory[pathCapacity] = {};
     const bool selected = directoryOverride != nullptr ? copyAbsolutePath(directoryOverride, selectedDirectory)
-                                                        : selectDefaultDirectory(selectedDirectory);
+                                                       : selectDefaultDirectory(selectedDirectory);
     if (!selected || !createDirectoryTree(selectedDirectory) || !pruneOldCrashDumps(selectedDirectory))
         return false;
 

@@ -69,7 +69,7 @@ set(ANTIMICROX_PROJECT_URL "https://github.com/BlueShapes/antimicrox/")
 
 # The independent Delta version number.
 set(ANTIMICROX_MAJOR_VERSION 1)
-set(ANTIMICROX_MINOR_VERSION 0)
+set(ANTIMICROX_MINOR_VERSION 1)
 set(ANTIMICROX_PATCH_VERSION 0)
 set(ANTIMICROX_PRERELEASE_VERSION "")
 

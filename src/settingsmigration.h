@@ -13,8 +13,7 @@
 #include <QString>
 #include <QStringList>
 
-namespace SettingsMigration
-{
+namespace SettingsMigration {
 enum class Result
 {
     DestinationExists,

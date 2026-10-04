@@ -28,8 +28,8 @@
 #include <QVariant>
 #include <cmath>
 
-#include "event.h"
 #include "applicationsecuritypolicy.h"
+#include "event.h"
 #include "eventhandlerfactory.h"
 #include "globalvariables.h"
 #include "joybuttontypes/joybutton.h"

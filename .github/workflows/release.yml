@@ -92,8 +92,8 @@ jobs:
 
             - name: Run focused release tests
               run: |
-                  cmake --build ${{ github.workspace }}/build --target ProductIdentityTests SecurityPolicyTests --parallel 8
-                  ctest --test-dir ${{ github.workspace }}/build --output-on-failure -R "ProductIdentityTests|SecurityPolicyTests"
+                  cmake --build ${{ github.workspace }}/build --target ProductIdentityTests SecurityPolicyTests NativeGameInputTests InputReleaseLatchTests --parallel 8
+                  ctest --test-dir ${{ github.workspace }}/build --output-on-failure -R "ProductIdentityTests|SecurityPolicyTests|NativeGameInputTests|InputReleaseLatchTests"
 
             - name: Create Deb package
               id: create_deb
@@ -178,8 +178,8 @@ jobs:
                   PATCH="$(sed -n 's/^set(ANTIMICROX_PATCH_VERSION \([^)]*\))$/\1/p' CMakeLists.txt)"
                   cd build
                   cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_PREFIX_PATH="${QT_ROOT_DIR}/lib/cmake" -DANTIMICROX_PKG_VERSION="$MAJOR.$MINOR.$PATCH-x86_64 GitHub AppImage Release"
-                  cmake --build . --target ProductIdentityTests SecurityPolicyTests --parallel 8
-                  ctest --output-on-failure -R "ProductIdentityTests|SecurityPolicyTests"
+                  cmake --build . --target ProductIdentityTests SecurityPolicyTests NativeGameInputTests InputReleaseLatchTests --parallel 8
+                  ctest --output-on-failure -R "ProductIdentityTests|SecurityPolicyTests|NativeGameInputTests|InputReleaseLatchTests"
                   make install DESTDIR=AppDir -j8
 
             # UPDATE_INFORMATION describes where information about updates can be found
@@ -274,9 +274,9 @@ jobs:
 
             - name: Run focused release tests
               run: |
-                  cmake --build '${{ github.workspace }}'/build --target ProductIdentityTests SecurityPolicyTests --parallel 8
+                  cmake --build '${{ github.workspace }}'/build --target ProductIdentityTests SecurityPolicyTests NativeGameInputTests InputReleaseLatchTests InputSuspensionTests --parallel 8
                   QT_BIN="$(cygpath -u "$QT_ROOT_DIR")/bin"
-                  PATH="$QT_BIN:$PATH" ctest --test-dir '${{ github.workspace }}'/build --output-on-failure -R "ProductIdentityTests|SecurityPolicyTests"
+                  PATH="$QT_BIN:$PATH" ctest --test-dir '${{ github.workspace }}'/build --output-on-failure -R "ProductIdentityTests|SecurityPolicyTests|NativeGameInputTests|InputReleaseLatchTests|InputSuspensionTests"
 
             - name: Build Installer
               run: cmake --build '${{ github.workspace }}'/build --target package --parallel 8

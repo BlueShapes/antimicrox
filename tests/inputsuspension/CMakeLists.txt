@@ -12,6 +12,10 @@ foreach(source IN LISTS antimicrox_SOURCES antimicrox_HEADERS_MOC antimicrox_FOR
     endif()
 endforeach()
 set_source_files_properties(${input_suspension_sources} PROPERTIES SKIP_AUTOMOC ON)
+# CMake versions predating globally visible GENERATED properties need the
+# parent's Qt-generated UI/resource sources marked again in this directory.
+set_source_files_properties(${antimicrox_HEADERS_MOC} ${antimicrox_FORMS_HEADERS} ${antimicrox_RESOURCES_RCC}
+        PROPERTIES GENERATED TRUE)
 
 # Current production builds use CMAKE_AUTOMOC rather than QT_WRAP_CPP, so
 # antimicrox_HEADERS_MOC is empty and its metaobjects live in this generated unit.

@@ -70,8 +70,8 @@ jobs:
             - name: Build AntiMicroX-Delta
               run: cmake --build ${{ github.workspace }}/build
 
-            - name: Run focused identity, security, and crash logging tests
-              run: ctest --test-dir ${{ github.workspace }}/build --output-on-failure -R "ProductIdentityTests|SecurityPolicyTests|CrashLoggingTests"
+            - name: Run focused identity, security, crash logging, and input bridge tests
+              run: ctest --test-dir ${{ github.workspace }}/build --output-on-failure -R "ProductIdentityTests|SecurityPolicyTests|CrashLoggingTests|NativeGameInputTests|InputReleaseLatchTests|InputSuspensionTests"
 
     # Build job for Windows
     build-windows:
@@ -174,5 +174,5 @@ jobs:
             - name: Build
               run: cmake --build "${{ github.workspace }}/build" --parallel 8
 
-            - name: Run focused identity, security, and crash logging tests
-              run: ctest --test-dir "${{ github.workspace }}/build" -C "${{ matrix.build-type }}" --output-on-failure -R "ProductIdentityTests|SecurityPolicyTests|CrashLoggingTests"
+            - name: Run focused identity, security, crash logging, and input bridge tests
+              run: ctest --test-dir "${{ github.workspace }}/build" -C "${{ matrix.build-type }}" --output-on-failure -R "ProductIdentityTests|SecurityPolicyTests|CrashLoggingTests|NativeGameInputTests|InputReleaseLatchTests|InputSuspensionTests"

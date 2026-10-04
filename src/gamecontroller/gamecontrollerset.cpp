@@ -50,8 +50,7 @@ void GameControllerSet::reset() { resetSticks(); }
 void GameControllerSet::applyHapticTrigger()
 {
     GameController *controller = qobject_cast<GameController *>(getInputDevice());
-    GameControllerTrigger *leftTrigger =
-        qobject_cast<GameControllerTrigger *>(getJoyAxis(SDL_CONTROLLER_AXIS_TRIGGERLEFT));
+    GameControllerTrigger *leftTrigger = qobject_cast<GameControllerTrigger *>(getJoyAxis(SDL_CONTROLLER_AXIS_TRIGGERLEFT));
     GameControllerTrigger *rightTrigger =
         qobject_cast<GameControllerTrigger *>(getJoyAxis(SDL_CONTROLLER_AXIS_TRIGGERRIGHT));
     if (controller == nullptr || leftTrigger == nullptr || rightTrigger == nullptr)

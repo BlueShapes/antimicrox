@@ -15,8 +15,7 @@
 #include <QString>
 #include <QVersionNumber>
 
-namespace ProductIdentity
-{
+namespace ProductIdentity {
 inline const QString displayName{QStringLiteral(PROJECT_PRODUCT_NAME)};
 inline const QString applicationName{QStringLiteral(PROJECT_PRODUCT_SLUG)};
 inline const QString desktopId{QStringLiteral(PROJECT_DESKTOP_ID)};

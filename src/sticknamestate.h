@@ -30,8 +30,7 @@ class StickNameState final
     // Takes a source snapshot before locking this state, so two sticks are never locked together.
     void copyCustomNameFrom(const StickNameState &source);
 
-    QString partialName(const QString &stickLabel, int realJoyIndex, bool forceFullFormat,
-                        bool displayNames) const;
+    QString partialName(const QString &stickLabel, int realJoyIndex, bool forceFullFormat, bool displayNames) const;
 
   private:
     static constexpr int MaxCustomNameLength = 20;

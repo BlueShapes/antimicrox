@@ -37,14 +37,10 @@
 Logger *Logger::instance = nullptr;
 QReadWriteLock Logger::instanceLock;
 
-namespace
-{
+namespace {
 constexpr qint64 maximumLogBytes = 8LL * 1024LL * 1024LL;
 
-bool isUtf8ContinuationByte(char value)
-{
-    return (static_cast<unsigned char>(value) & 0xc0U) == 0x80U;
-}
+bool isUtf8ContinuationByte(char value) { return (static_cast<unsigned char>(value) & 0xc0U) == 0x80U; }
 
 bool retainRecentLogContents(const QString &filename)
 {
@@ -64,8 +60,7 @@ bool retainRecentLogContents(const QString &filename)
     if (firstNewline >= 0 && firstNewline + 1 < recentContents.size())
     {
         recentContents.remove(0, firstNewline + 1);
-    }
-    else
+    } else
     {
         qsizetype firstCharacter = 0;
         while (firstCharacter < recentContents.size() && isUtf8ContinuationByte(recentContents.at(firstCharacter)))
@@ -227,8 +222,8 @@ void Logger::setCurrentLogFile(QString filename)
             return;
 
         QMutexLocker locker(&current->logMutex);
-        if (current->outputFile != nullptr && current->outputFile->isOpen()
-            && refersToSameFile(current->outputFile->fileName(), filename))
+        if (current->outputFile != nullptr && current->outputFile->isOpen() &&
+            refersToSameFile(current->outputFile->fileName(), filename))
         {
             return;
         }
@@ -239,8 +234,7 @@ void Logger::setCurrentLogFile(QString filename)
         if (!retentionSucceeded || !replacement->open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text))
         {
             openFailed = true;
-        }
-        else
+        } else
         {
             current->outFileStream.flush();
             if (current->outputFile != nullptr && current->outputFile->isOpen())

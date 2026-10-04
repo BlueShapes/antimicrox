@@ -11,8 +11,8 @@
 #include <QHashIterator>
 #include <QSettings>
 
-#include "winextras.h"
 #include "windowstokenelevation.h"
+#include "winextras.h"
 #include <shlobj.h>
 
 typedef DWORD(WINAPI *MYPROC)(HANDLE, DWORD, LPWSTR, PDWORD);

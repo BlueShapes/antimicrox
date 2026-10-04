@@ -123,10 +123,10 @@ bool XMLConfigReader::read()
 
                 if (migrationString.length() > 0)
                 {
-                    xml->clear();                                     // Remove QFile from reader and clear state
-                    xml->addData(migrationString);                    // Add converted XML string to reader
-                    xml->readNextStartElement();                      // Skip joystick root node
-                    configFile->close();                              // Close current config file
+                    xml->clear();                  // Remove QFile from reader and clear state
+                    xml->addData(migrationString); // Add converted XML string to reader
+                    xml->readNextStartElement();   // Skip joystick root node
+                    configFile->close();           // Close current config file
                     if (ApplicationSecurityPolicy::current().allowsProfileMigrationWriteback())
                     {
                         configFile->open(QFile::WriteOnly | QFile::Text); // Write converted XML to file
@@ -137,7 +137,8 @@ bool XMLConfigReader::read()
                             configFile->close();
                         } else
                         {
-                            xml->raiseError(tr("Could not write updated profile XML to file %1.").arg(configFile->fileName()));
+                            xml->raiseError(
+                                tr("Could not write updated profile XML to file %1.").arg(configFile->fileName()));
                         }
                     } else
                     {

@@ -24,7 +24,7 @@ void testPublicIdentity()
     expect(ProductIdentity::displayName == QStringLiteral("AntiMicroX-Delta"), "the display name is Delta-specific");
     expect(ProductIdentity::applicationName == QStringLiteral("antimicrox-delta"),
            "the application name is Delta-specific");
-    expect(ProductIdentity::version == QStringLiteral("1.0.0"), "the first independent Delta version is 1.0.0");
+    expect(ProductIdentity::version == QStringLiteral("1.1.0"), "the public version is 1.1.0");
     expect(ProductIdentity::upstreamBaseVersion == QStringLiteral("3.6.1"),
            "the upstream base version remains separately identifiable");
     expect(ProductIdentity::projectUrl == QStringLiteral("https://github.com/BlueShapes/antimicrox/"),
@@ -54,8 +54,8 @@ void testReleaseVersionComparison()
            "a prerelease suffix is ignored for numeric comparison");
     expect(ProductIdentity::normalizedReleaseVersion(QStringLiteral("release-1.2.3")).isNull(),
            "an unrelated tag format is rejected");
-    expect(ProductIdentity::isNewerRelease(QStringLiteral("v1.0.1")), "a greater Delta version is an update");
-    expect(!ProductIdentity::isNewerRelease(QStringLiteral("v1.0.0")), "the installed version is not an update");
+    expect(ProductIdentity::isNewerRelease(QStringLiteral("v1.1.1")), "a greater Delta version is an update");
+    expect(!ProductIdentity::isNewerRelease(QStringLiteral("v1.1.0")), "the installed version is not an update");
     expect(!ProductIdentity::isNewerRelease(QStringLiteral("v0.9.9")), "an older version is not an update");
     expect(!ProductIdentity::isNewerRelease(QStringLiteral("3.7.0")),
            "the legacy fork version cannot supersede the independent Delta series");

@@ -11,7 +11,12 @@
 class NativeGameInputState
 {
   public:
-    enum class Result { Accepted, Ignored, Invalid };
+    enum class Result
+    {
+        Accepted,
+        Ignored,
+        Invalid
+    };
     static constexpr int MaxFrameBytes = 4096;
     static constexpr int MaxSessions = 64;
     static constexpr quint64 MaxSnapshotAgeMs = 750;
@@ -22,8 +27,7 @@ class NativeGameInputState
     void disconnect(quint64 connection);
     void clear();
     void prune(const std::function<bool(quint32)> &processAlive);
-    bool suspended(quint64 now, quintptr foreground,
-                   const std::function<bool(quintptr, quint32)> &windowOwner) const;
+    bool suspended(quint64 now, quintptr foreground, const std::function<bool(quintptr, quint32)> &windowOwner) const;
 
   private:
     struct Session

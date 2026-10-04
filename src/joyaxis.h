@@ -54,12 +54,12 @@ class JoyAxis : public QObject
         PositiveHalfThrottle = 2
     };
 
-    void joyEvent(int value, bool ignoresets = false, bool updateLastValues = true);          // JoyAxisEvent class
+    void joyEvent(int value, bool ignoresets = false, bool updateLastValues = true); // JoyAxisEvent class
     void queuePendingEvent(int value, bool ignoresets = false, bool updateLastValues = true,
                            bool applyCalibration = true); // JoyAxisEvent class
-    void activatePendingEvent();                                                              // JoyAxisEvent class
-    bool hasPendingEvent();                                                                   // JoyAxisEvent class
-    void clearPendingEvent();                                                                 // JoyAxisEvent class
+    void activatePendingEvent();                          // JoyAxisEvent class
+    bool hasPendingEvent();                               // JoyAxisEvent class
+    void clearPendingEvent();                             // JoyAxisEvent class
     bool inDeadZone(int value);
 
     virtual QString getName(bool forceFullFormat = false, bool displayNames = false);

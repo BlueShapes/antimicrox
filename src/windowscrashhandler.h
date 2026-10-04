@@ -10,8 +10,7 @@
 #ifndef WINDOWSCRASHHANDLER_H
 #define WINDOWSCRASHHANDLER_H
 
-namespace WindowsCrashHandler
-{
+namespace WindowsCrashHandler {
 bool install(const wchar_t *directoryOverride = nullptr) noexcept;
 bool writeDump() noexcept;
 [[noreturn]] void terminateWithDump() noexcept;
