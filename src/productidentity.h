@@ -32,7 +32,11 @@ inline const QString localSocketKey{QStringLiteral("antimicroxDeltaSignalListene
 inline const QString configDirectoryName{QStringLiteral(PROJECT_PRODUCT_SLUG)};
 inline const QString configFileName{QStringLiteral(PROJECT_PRODUCT_SLUG "_settings.ini")};
 
-extern const QString version;
+inline const QString version =
+    QStringLiteral("%1.%2.%3").arg(PROJECT_MAJOR_VERSION).arg(PROJECT_MINOR_VERSION).arg(PROJECT_PATCH_VERSION) +
+    (QStringLiteral(PROJECT_PRERELEASE_VERSION).isEmpty()
+         ? QString()
+         : QStringLiteral("-") + QStringLiteral(PROJECT_PRERELEASE_VERSION));
 
 QVersionNumber normalizedReleaseVersion(const QString &tag);
 bool isNewerRelease(const QString &tag);

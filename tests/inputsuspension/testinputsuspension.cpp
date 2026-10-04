@@ -1,4 +1,5 @@
 #include "antimicrosettings.h"
+#include "common.h"
 #include "gamecontroller/gamecontroller.h"
 #include "inputdaemon.h"
 #include "joybuttontypes/joybutton.h"
@@ -50,6 +51,7 @@ class InputSuspensionTests final : public QObject
     Q_OBJECT
 
   private slots:
+    void initTestCase();
     void init();
     void cleanup();
     void pausedControllerEventsDrainAndPreserveRawMonitor();
@@ -81,6 +83,15 @@ class InputSuspensionTests final : public QObject
     SDL_JoystickID instanceId = -1;
     GameController *controller = nullptr;
 };
+
+void InputSuspensionTests::initTestCase()
+{
+    QString expectedVersion = ProductIdentity::version;
+#ifdef QT_DEBUG
+    expectedVersion += QStringLiteral("-d");
+#endif
+    QCOMPARE(PadderCommon::programVersion, expectedVersion);
+}
 
 void InputSuspensionTests::init()
 {

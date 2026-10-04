@@ -56,7 +56,7 @@ if(WIN32)
     get_filename_component(input_suspension_qt_bin "${input_suspension_qt_core}" DIRECTORY)
     get_filename_component(input_suspension_compiler_bin "${CMAKE_CXX_COMPILER}" DIRECTORY)
     add_test(NAME InputSuspensionTests COMMAND ${CMAKE_COMMAND} -E env
-            "QT_QPA_PLATFORM=minimal" "QT_PLUGIN_PATH=${QT_PLUGIN_DIR}" "QT_DEBUG_PLUGINS=1"
+            "QT_QPA_PLATFORM=minimal" "QT_PLUGIN_PATH=${QT_PLUGIN_DIR}"
             "PATH=${input_suspension_compiler_bin};${input_suspension_qt_bin};$ENV{PATH}"
             $<TARGET_FILE:InputSuspensionTests>)
 else()

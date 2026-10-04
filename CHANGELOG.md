@@ -19,6 +19,7 @@ delay when changing input ownership is possible. See
 
 - Prevent stale control callbacks after controller widgets are replaced.
 - Synchronize stick-name changes with input processing and refresh name previews reliably.
+- Fix startup crashes caused by version-string initialization order in Qt 5 builds.
 
 **Verification and maintenance:**
 

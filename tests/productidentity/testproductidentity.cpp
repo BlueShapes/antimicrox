@@ -8,6 +8,8 @@
 
 namespace
 {
+// Capture the version before main, as common.h does in production translation units.
+const QString startupVersion = ProductIdentity::version;
 int failures = 0;
 
 void expect(bool condition, const char *message)
@@ -25,6 +27,7 @@ void testPublicIdentity()
     expect(ProductIdentity::applicationName == QStringLiteral("antimicrox-delta"),
            "the application name is Delta-specific");
     expect(ProductIdentity::version == QStringLiteral("1.1.0"), "the public version is 1.1.0");
+    expect(startupVersion == ProductIdentity::version, "the version is available during static initialization");
     expect(ProductIdentity::upstreamBaseVersion == QStringLiteral("3.6.1"),
            "the upstream base version remains separately identifiable");
     expect(ProductIdentity::projectUrl == QStringLiteral("https://github.com/BlueShapes/antimicrox/"),
