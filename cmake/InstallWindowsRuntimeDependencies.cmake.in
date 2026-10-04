@@ -2,8 +2,10 @@ if(POLICY CMP0207)
     cmake_policy(SET CMP0207 NEW)
 endif()
 
+get_filename_component(_runtime_compiler_directory "@CMAKE_CXX_COMPILER@" DIRECTORY)
 set(_runtime_dependency_directories
     "@CMAKE_RUNTIME_OUTPUT_DIRECTORY@"
+    "${_runtime_compiler_directory}"
     "@QT_DLL_DIR@"
     "@SDL2_DLL_LOCATION_DIR@"
 )

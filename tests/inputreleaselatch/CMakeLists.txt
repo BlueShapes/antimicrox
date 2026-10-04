@@ -16,8 +16,9 @@ target_link_libraries(InputReleaseLatchTests PRIVATE Qt${QT_VERSION_MAJOR}::Core
 if(WIN32)
     get_target_property(input_latch_qt_core Qt${QT_VERSION_MAJOR}::Core LOCATION)
     get_filename_component(input_latch_qt_bin "${input_latch_qt_core}" DIRECTORY)
+    get_filename_component(input_latch_compiler_bin "${CMAKE_CXX_COMPILER}" DIRECTORY)
     add_test(NAME InputReleaseLatchTests COMMAND ${CMAKE_COMMAND} -E env
-            "PATH=${input_latch_qt_bin};$ENV{PATH}" $<TARGET_FILE:InputReleaseLatchTests>)
+            "PATH=${input_latch_compiler_bin};${input_latch_qt_bin};$ENV{PATH}" $<TARGET_FILE:InputReleaseLatchTests>)
 else()
     add_test(NAME InputReleaseLatchTests COMMAND InputReleaseLatchTests)
 endif()

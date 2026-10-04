@@ -24,6 +24,7 @@ delay when changing input ownership is possible. See
 
 - Add focused protocol, named-pipe, held-input, and virtual-controller pipeline tests.
 - Run input bridge checks in the CI build and release gates, and fix generated-source scoping in Windows test builds.
+- Prefer compiler-matching Windows runtime DLLs in tests and installer dependency collection.
 - Fix update-check initialization for Clang builds and apply the repository's C++ formatting rules.
 - Mark the repository as AI-driven and permit autonomous verified local commits.
 

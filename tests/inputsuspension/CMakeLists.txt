@@ -27,10 +27,14 @@ if(input_suspension_app_automoc)
     endif()
     if(CMAKE_CONFIGURATION_TYPES)
         set(input_suspension_app_moc "${input_suspension_app_autogen_dir}/mocs_compilation_$<CONFIG>.cpp")
+        foreach(config IN LISTS CMAKE_CONFIGURATION_TYPES)
+            set_source_files_properties("${input_suspension_app_autogen_dir}/mocs_compilation_${config}.cpp"
+                    PROPERTIES GENERATED TRUE SKIP_AUTOMOC ON)
+        endforeach()
     else()
         set(input_suspension_app_moc "${input_suspension_app_autogen_dir}/mocs_compilation.cpp")
+        set_source_files_properties("${input_suspension_app_moc}" PROPERTIES GENERATED TRUE SKIP_AUTOMOC ON)
     endif()
-    set_source_files_properties("${input_suspension_app_moc}" PROPERTIES GENERATED TRUE SKIP_AUTOMOC ON)
     list(APPEND input_suspension_sources "${input_suspension_app_moc}")
 endif()
 
@@ -45,9 +49,10 @@ target_link_libraries(InputSuspensionTests PRIVATE
 if(WIN32)
     get_target_property(input_suspension_qt_core Qt${QT_VERSION_MAJOR}::Core LOCATION)
     get_filename_component(input_suspension_qt_bin "${input_suspension_qt_core}" DIRECTORY)
+    get_filename_component(input_suspension_compiler_bin "${CMAKE_CXX_COMPILER}" DIRECTORY)
     add_test(NAME InputSuspensionTests COMMAND ${CMAKE_COMMAND} -E env
             "QT_QPA_PLATFORM=offscreen" "QT_PLUGIN_PATH=${QT_PLUGIN_DIR}"
-            "PATH=${input_suspension_qt_bin};$ENV{PATH}"
+            "PATH=${input_suspension_compiler_bin};${input_suspension_qt_bin};$ENV{PATH}"
             $<TARGET_FILE:InputSuspensionTests>)
 else()
     add_test(NAME InputSuspensionTests COMMAND ${CMAKE_COMMAND} -E env

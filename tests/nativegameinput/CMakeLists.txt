@@ -18,9 +18,10 @@ endif()
 if(WIN32)
     get_target_property(native_game_qt_core Qt${QT_VERSION_MAJOR}::Core LOCATION)
     get_filename_component(native_game_qt_bin "${native_game_qt_core}" DIRECTORY)
+    get_filename_component(native_game_compiler_bin "${CMAKE_CXX_COMPILER}" DIRECTORY)
     # Supply the matching compiler/Qt runtime even when CTest has a minimal PATH.
     add_test(NAME NativeGameInputTests COMMAND ${CMAKE_COMMAND} -E env
-            "PATH=${native_game_qt_bin};$ENV{PATH}" $<TARGET_FILE:NativeGameInputTests>)
+            "PATH=${native_game_compiler_bin};${native_game_qt_bin};$ENV{PATH}" $<TARGET_FILE:NativeGameInputTests>)
 else()
     add_test(NAME NativeGameInputTests COMMAND NativeGameInputTests)
 endif()
