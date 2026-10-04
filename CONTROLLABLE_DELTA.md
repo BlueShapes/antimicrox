@@ -75,7 +75,7 @@ transitions. It does not move desktop focus or start Minecraft.
 controller: paused event draining, raw monitoring, manual disable preservation,
 held-input latches, stale event rejection, set-change timers, calibrated profile
 transfers, radial stick neutral detection, and pending mouse-state cleanup. It
-uses an offscreen Qt application and generates no operating-system input.
+uses a headless Qt application and generates no operating-system input.
 The mod has focused bridge tests alongside its existing NeoForge Java tests.
 Compile both Fabric and NeoForge for the versions configured in that repository.
 Final hardware verification should check real controller inputs, Alt+Tab,

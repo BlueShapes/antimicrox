@@ -27,12 +27,14 @@ if(input_suspension_app_automoc)
     endif()
     if(CMAKE_CONFIGURATION_TYPES)
         set(input_suspension_app_moc "${input_suspension_app_autogen_dir}/mocs_compilation_$<CONFIG>.cpp")
+        set(input_suspension_app_moc_include "${input_suspension_app_autogen_dir}/include_$<CONFIG>")
         foreach(config IN LISTS CMAKE_CONFIGURATION_TYPES)
             set_source_files_properties("${input_suspension_app_autogen_dir}/mocs_compilation_${config}.cpp"
                     PROPERTIES GENERATED TRUE SKIP_AUTOMOC ON)
         endforeach()
     else()
         set(input_suspension_app_moc "${input_suspension_app_autogen_dir}/mocs_compilation.cpp")
+        set(input_suspension_app_moc_include "${input_suspension_app_autogen_dir}/include")
         set_source_files_properties("${input_suspension_app_moc}" PROPERTIES GENERATED TRUE SKIP_AUTOMOC ON)
     endif()
     list(APPEND input_suspension_sources "${input_suspension_app_moc}")
@@ -43,6 +45,9 @@ add_dependencies(InputSuspensionTests antimicrox)
 set_target_properties(InputSuspensionTests PROPERTIES AUTOMOC ON)
 target_compile_features(InputSuspensionTests PRIVATE cxx_std_17)
 target_include_directories(InputSuspensionTests PRIVATE "${CMAKE_SOURCE_DIR}/src" ${SDL2_INCLUDE_DIRS}/SDL2)
+if(input_suspension_app_automoc)
+    target_include_directories(InputSuspensionTests PRIVATE "${input_suspension_app_moc_include}")
+endif()
 target_link_libraries(InputSuspensionTests PRIVATE
         Qt${QT_VERSION_MAJOR}::Test ${QT_LIBS} ${WIN_LIBS} ${X11_LIBS} ${SDL2_LIBRARIES} ${EXTRA_LIBS})
 
@@ -51,7 +56,7 @@ if(WIN32)
     get_filename_component(input_suspension_qt_bin "${input_suspension_qt_core}" DIRECTORY)
     get_filename_component(input_suspension_compiler_bin "${CMAKE_CXX_COMPILER}" DIRECTORY)
     add_test(NAME InputSuspensionTests COMMAND ${CMAKE_COMMAND} -E env
-            "QT_QPA_PLATFORM=offscreen" "QT_PLUGIN_PATH=${QT_PLUGIN_DIR}"
+            "QT_QPA_PLATFORM=minimal" "QT_PLUGIN_PATH=${QT_PLUGIN_DIR}" "QT_DEBUG_PLUGINS=1"
             "PATH=${input_suspension_compiler_bin};${input_suspension_qt_bin};$ENV{PATH}"
             $<TARGET_FILE:InputSuspensionTests>)
 else()

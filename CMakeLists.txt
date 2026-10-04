@@ -764,6 +764,10 @@ if(WIN32)
         )
 
     find_path(SDL2_DLL_LOCATION_DIR "SDL2.dll" HINTS "${SDL2_LIBRARY_DIRS}/../bin")
+    add_custom_command(TARGET antimicrox POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${SDL2_DLL_LOCATION_DIR}/SDL2.dll" $<TARGET_FILE_DIR:antimicrox>
+        COMMENT "Copying the SDL2 Windows runtime")
 
     #these three lines assume SDL2 in standard location TODO do it better
     find_path(GCC_DLL "libgcc_s_seh-1.dll" HINTS "${SDL2_LIBRARY_DIRS}/../bin")
